@@ -33,6 +33,7 @@
 
 ## Sever Aliases
 192.168.86.81 adguard.local
+192.168.86.81 photos.local
 
 # LOCAL NET
 192.168.86.79 arch-ryzen9.lan  
