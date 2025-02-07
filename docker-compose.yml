@@ -21,3 +21,4 @@ services:
       - /data/adguard/conf:/opt/adguardhome/conf
       - /data/adguard/work:/opt/adguardhome/work
       - ./hosts:/etc/hosts:r
+      - ./certs:/opt/certs:r
