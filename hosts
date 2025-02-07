@@ -1,0 +1,71 @@
+arch-i7.lan  192.168.86.150.Computer. 
+
+192.168.86.1 opnsense.markridgwell.com
+192.168.86.1  zen.markridgwell.com
+
+personal.phone.mark.remote.lan 10.20.10.27
+
+
+# UPSTREAM
+172.67.211.107 notes.markridgwell.com
+2606:4700:3031::ac43:d36b notes.markridgwell.com
+104.21.85.216 notes.markridgwell.com
+2606:4700:3033::6815:55d8 notes.markridgwell.com
+
+# Pre-cache of DNS Servers
+1.1.1.1 1dot1dot1dot1.cloudflare-dns.com  
+1.0.0.1 1dot1dot1dot1.cloudflare-dns.com  
+1.1.1.1 mozilla.cloudflare-dns.com
+1.0.0.1 mozilla.cloudflare-dns.com
+1.1.1.2 security.cloudflare-dns.com  
+1.0.0.2 security.cloudflare-dns.com
+8.8.8.8 dns.google  
+8.8.4.4 dns.google  
+9.9.9.9 dns.quad9.net
+149.112.112.112 dns.quad9.net
+
+
+## DEV Cache
+192.168.86.81 api.nuget.local
+192.168.86.81 funfair.nuget.local  
+192.168.86.81 funfair-prerelease.nuget.local
+192.168.86.81 npm.local  
+192.168.86.95 tuxedo.lan  
+
+# LOCAL NET
+192.168.86.79 arch-ryzen9.lan  
+192.168.86.201 bedroom-roku.tv.michele.lan  
+192.168.86.151 arch-i7lan
+192.168.86.1 firewall.lan  
+192.168.86.22 office-printer-8-port.netgear.lan  
+192.168.86.23 stairs-5-port.netgear.lan  
+192.168.86.24 office-main-5-port.netgear.lan  
+192.168.86.25 netgear-bedroom-8-port.netgear.lan  
+192.168.86.120 juno-ryzen7-wifi.lan  
+192.168.86.121 juno-ryzen7-wired.lan  
+192.168.86.81 arch-n95.lan  
+192.168.86.28 arch-raspberrypi3.lan
+192.168.86.204 samsung.tv.office.lan  
+192.168.86.205 roku.tv.office.lan  
+192.168.86.200 bedroom-roku.tv.mark.lan  
+192.168.86.206 bedroom-samsung.tv.michele.lan  
+192.168.86.202 roku.tv.conservatory.lan  
+192.168.86.203 roku.tv.livingroom.lan  
+
+## WORK
+192.168.249.20 ffmr-01.wlan  
+192.168.249.10 ffmr-02.wlan  
+
+## CAMERAS
+192.168.202.48 cctv-camera.clan
+
+
+## IOT
+192.168.34.8 homeassistant.local  
+
+
+### VPN
+10.20.10.28 work.phone.mark.remote.lan
+
+10.20.10.29 chromebook.pc.mark.remote.lan  
+10.20.10.30 laptop.pc.mark.remote.lan  
