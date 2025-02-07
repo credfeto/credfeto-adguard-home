@@ -1,9 +1,8 @@
-arch-i7.lan  192.168.86.150.Computer. 
 
+## Outside hosts
 192.168.86.1 opnsense.markridgwell.com
 192.168.86.1  zen.markridgwell.com
 
-personal.phone.mark.remote.lan 10.20.10.27
 
 
 # UPSTREAM
@@ -30,7 +29,10 @@ personal.phone.mark.remote.lan 10.20.10.27
 192.168.86.81 funfair.nuget.local  
 192.168.86.81 funfair-prerelease.nuget.local
 192.168.86.81 npm.local  
-192.168.86.95 tuxedo.lan  
+192.168.86.95 tuxedo.lan
+
+## Sever Aliases
+192.168.86.81 adguard.local
 
 # LOCAL NET
 192.168.86.79 arch-ryzen9.lan  
@@ -65,7 +67,7 @@ personal.phone.mark.remote.lan 10.20.10.27
 
 
 ### VPN
+10.20.10.27 personal.phone.mark.remote.lan
 10.20.10.28 work.phone.mark.remote.lan
-
-10.20.10.29 chromebook.pc.mark.remote.lan  
+10.20.10.29 chromebook.pc.mark.remote.lan
 10.20.10.30 laptop.pc.mark.remote.lan  
