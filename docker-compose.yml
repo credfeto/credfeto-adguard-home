@@ -5,7 +5,7 @@ services:
     container_name: adguard
     hostname: adguard
     restart: unless-stopped
-    stop_grace_period: 500s
+    stop_grace_period: 60s
     stop_signal: SIGINT
     ports:
       - 153:153/udp
