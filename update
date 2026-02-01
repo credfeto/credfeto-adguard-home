@@ -11,8 +11,6 @@ BASEDIR="$(dirname "$(readlink -f "$0")")"
 
 git pull
 
-[ -f "$BASEDIR/password.txt" ] || die "Missing password.txt"
-
 docker compose up -d | die "Could not start container"
 
 
