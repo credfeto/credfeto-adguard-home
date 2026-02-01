@@ -15,10 +15,10 @@ services:
       - "443:443/tcp" # DNS over HTTPS
       - "443:443/udp" # DNS over HTTPS
       - "3000:3000/tcp" # Admin
-      - "853:853/tcp" # DNS over TLS
-      - "853:853/udp" # DNS over QUIC
-      - "784:784/udp" # DNS over QUIC
-      - "8853:8853/udp" # DNS over QUIC
+      #- "853:853/tcp" # DNS over TLS
+      #- "853:853/udp" # DNS over QUIC
+      #- "784:784/udp" # DNS over QUIC
+      #- "8853:8853/udp" # DNS over QUIC
     volumes:
       - /data/adguard/conf:/opt/adguardhome/conf
       - /data/adguard/work:/opt/adguardhome/work
