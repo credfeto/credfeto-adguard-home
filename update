@@ -11,7 +11,7 @@ BASEDIR="$(dirname "$(readlink -f "$0")")"
 
 git pull
 
-docker compose up -d | die "Could not start container"
+docker compose up -d --remove-orphans | die "Could not start container"
 
 
 ## Admin UI
