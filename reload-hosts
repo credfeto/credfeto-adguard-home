@@ -1,0 +1,12 @@
+#! /bin/sh
+
+die() {
+    echo
+    echo "$@"
+    exit 1
+}
+
+
+git pull
+
+docker compose down && docker compose rm -f && docker compose up -d --remove-orphans | die "Could not start container"
