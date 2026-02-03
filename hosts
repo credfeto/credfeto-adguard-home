@@ -59,14 +59,14 @@
 192.168.218.250 docker-cache.markridgwell.com
 192.168.249.250 docker-cache.markridgwell.com
 10.20.10.250 docker-cache.markridgwell.com
-2a02:8010:61d5:150::00fa docker-cache.markridgwell.com
+#2a02:8010:61d5:150::00fa docker-cache.markridgwell.com
 
 192.168.86.250 docker-registry.markridgwell.com
 192.168.150.250 docker-registry.markridgwell.com
 192.168.218.250 docker-registry.markridgwell.com
 192.168.249.250 docker-registry.markridgwell.com
 10.20.10.250 docker-registry.markridgwell.com
-2a02:8010:61d5:150::00fa docker-registry.markridgwell.com
+#2a02:8010:61d5:150::00fa docker-registry.markridgwell.com
 
 
 192.168.86.250  aur.markridgwell.com
