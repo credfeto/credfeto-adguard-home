@@ -105,6 +105,7 @@
 10.20.10.250  pacman.markridgwell.com
 2a02:8010:61d5:150::00fa  pacman.markridgwell.com
 
+192.168.150.250  audiobookshelf.markridgwell.com
 192.168.150.250  home.markridgwell.com
 192.168.150.250  homeassistant.markridgwell.com
 192.168.150.250  inbucket.markridgwell.com
@@ -136,6 +137,7 @@
 192.168.86.11 proxmox-01.lan
 192.168.86.12 proxmox-02.lan
 192.168.86.13 proxmox-03.lan
+192.168.86.14 proxmox-03.lan
 
 192.168.86.156 xerox-b210-wired.lan
 
