@@ -1,8 +1,4 @@
 
-## Outside hosts
-192.168.86.1 opnsense.markridgwell.com
-192.168.86.1  zen.markridgwell.com
-
 # UPSTREAM
 172.67.211.107 notes.markridgwell.com
 2606:4700:3031::ac43:d36b notes.markridgwell.com
@@ -10,113 +6,31 @@
 2606:4700:3033::6815:55d8 notes.markridgwell.com
 
 # INTERNAL-SERVICES
-192.168.86.250 api-nuget.markridgwell.com
-192.168.150.250 api-nuget.markridgwell.com
-192.168.218.250 api-nuget.markridgwell.com
-192.168.249.250 api-nuget.markridgwell.com
-10.20.10.250 api-nuget.markridgwell.com
-2a02:8010:61d5:150::00fa api-nuget.markridgwell.com
-
-192.168.86.250 funfair-nuget.markridgwell.com
-192.168.150.250 funfair-nuget.markridgwell.com
-192.168.218.250 funfair-nuget.markridgwell.com
-192.168.249.250 funfair-nuget.markridgwell.com
-10.20.10.250 funfair-nuget.markridgwell.com
-2a02:8010:61d5:150::00fa funfair-nuget.markridgwell.com
-
-192.168.86.250 funfair-prerelease-nuget.markridgwell.com
-192.168.150.250 funfair-prerelease-nuget.markridgwell.com
-192.168.218.250 funfair-prerelease-nuget.markridgwell.com
-192.168.249.250 funfair-prerelease-nuget.markridgwell.com
-10.20.10.250 funfair-prerelease-nuget.markridgwell.com
-2a02:8010:61d5:150::00fa funfair-prerelease-nuget.markridgwell.com
-
-
-192.168.86.250 dotnet.markridgwell.com
-192.168.150.250 dotnet.markridgwell.com
-192.168.218.250 dotnet.markridgwell.com
-192.168.249.250 dotnet.markridgwell.com
-10.20.10.250 dotnet.markridgwell.com
-2a02:8010:61d5:150::00fa dotnet.markridgwell.com
-
-192.168.86.250 dev-cache.markridgwell.com
-192.168.150.250 dev-cache.markridgwell.com
-192.168.219.250 dev-cache.markridgwell.com
-192.168.249.250 dev-cache.markridgwell.com
-10.20.10.250 dev-cache.markridgwell.com
-2a02:8010:61d5:150::00fa dev-cache.markridgwell.com
-
-192.168.86.250 npm.markridgwell.com
-192.168.150.250 npm.markridgwell.com
-192.168.218.250 npm.markridgwell.com
-192.168.249.250 npm.markridgwell.com
-10.20.10.250 npm.markridgwell.com
-2a02:8010:61d5:150::00fa npm.markridgwell.com
-
-
-192.168.86.250 docker-cache.markridgwell.com
-192.168.150.250 docker-cache.markridgwell.com
-192.168.218.250 docker-cache.markridgwell.com
-192.168.249.250 docker-cache.markridgwell.com
-10.20.10.250 docker-cache.markridgwell.com
-#2a02:8010:61d5:150::00fa docker-cache.markridgwell.com
-
-192.168.86.250 docker-registry.markridgwell.com
-192.168.150.250 docker-registry.markridgwell.com
-192.168.218.250 docker-registry.markridgwell.com
-192.168.249.250 docker-registry.markridgwell.com
-10.20.10.250 docker-registry.markridgwell.com
-#2a02:8010:61d5:150::00fa docker-registry.markridgwell.com
-
-
-192.168.86.250  aur.markridgwell.com
-192.168.150.250  aur.markridgwell.com
-192.168.218.250  aur.markridgwell.com
-192.168.249.250  aur.markridgwell.com
-10.20.10.250  aur.markridgwell.com
-2a02:8010:61d5:150::00fa  aur.markridgwell.com
-
-192.168.86.250  aur-repo.markridgwell.com
-192.168.150.250  aur-repo.markridgwell.com
-192.168.218.250  aur-repo.markridgwell.com
-192.168.249.250  aur-repo.markridgwell.com
-10.20.10.250  aur-repo.markridgwell.com
-2a02:8010:61d5:150::00fa  aur.markridgwell.com
-
-
-192.168.86.250  flathub.markridgwell.com
-192.168.150.250  flathub.markridgwell.com
-192.168.218.250  flathub.markridgwell.com
-192.168.249.250  flathub.markridgwell.com
-10.20.10.250  flathub.markridgwell.com
-2a02:8010:61d5:150::00fa  flathub.markridgwell.com
-
-192.168.86.250  linux-cache.markridgwell.com
-192.168.150.250  linux-cache.markridgwell.com
-192.168.218.250  linux-cache.markridgwell.com
-192.168.249.250  linux-cache.markridgwell.com
-10.20.10.250  linux-cache.markridgwell.com
-2a02:8010:61d5:150::00fa  linux-cache.markridgwell.com
-
-192.168.86.250  pacman.markridgwell.com
-192.168.150.250  pacman.markridgwell.com
-192.168.218.250  pacman.markridgwell.com
-192.168.249.250  pacman.markridgwell.com
-10.20.10.250  pacman.markridgwell.com
-2a02:8010:61d5:150::00fa  pacman.markridgwell.com
-
 192.168.150.250  audiobookshelf.markridgwell.com
+192.168.150.250  aur-repo.markridgwell.com
+192.168.150.250  aur.markridgwell.com
+192.168.150.250  cctv.markridgwell.com
+192.168.150.250  flathub.markridgwell.com
 192.168.150.250  home.markridgwell.com
 192.168.150.250  homeassistant.markridgwell.com
 192.168.150.250  inbucket.markridgwell.com
 192.168.150.250  jellyfin.markridgwell.com
+192.168.150.250  linux-cache-01.markridgwell.com
+192.168.150.250  linux-cache-02.markridgwell.com
 192.168.150.250  mastodon.markridgwell.com
 192.168.150.250  ollama.markridgwell.com
+192.168.150.250  pacman.markridgwell.com
 192.168.150.250  photos.markridgwell.com
 192.168.150.250  podcasts.markridgwell.com
-
-192.168.150.250  cctv.markridgwell.com
 192.168.150.250  reolink.markridgwell.com
+192.168.150.250 api-nuget.markridgwell.com
+192.168.150.250 dev-cache.markridgwell.com
+192.168.150.250 docker-cache.markridgwell.com
+192.168.150.250 docker-registry.markridgwell.com
+192.168.150.250 dotnet.markridgwell.com
+192.168.150.250 funfair-nuget.markridgwell.com
+192.168.150.250 funfair-prerelease-nuget.markridgwell.com
+192.168.150.250 npm.markridgwell.com
 
 
 
@@ -140,20 +54,3 @@
 192.168.86.14 proxmox-04.lan
 
 192.168.86.156 xerox-b210-wired.lan
-
-## WORK
-192.168.249.20 ffmr-01.wlan  
-192.168.249.10 ffmr-02.wlan  
-
-## CAMERAS
-192.168.202.48 cctv-camera.clan
-192.168.202.48 camerax8.clan
-192.168.86.49 cctv.lan
-
-
-### VPN
-10.20.10.27 personal.phone.mark.remote.lan
-10.20.10.28 work.phone.mark.remote.lan
-10.20.10.29 chromebook.pc.mark.remote.lan
-10.20.10.30 laptop.pc.mark.remote.lan
-10.20.10.31 thinkpad.pc.mark.remote.lan
