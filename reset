@@ -1,0 +1,14 @@
+#!/bin/sh
+
+set -e
+
+die() {
+    echo
+    echo "$@"
+    exit 1
+}
+
+docker compose stop || die "Failed to stop containers"
+docker compose rm -f || die "Failed to remove containers"
+
+./update
