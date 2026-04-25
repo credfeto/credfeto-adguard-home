@@ -60,5 +60,5 @@
 
 192.168.86.156 xerox-b210-wired.lan
 
-192.168.86.23 nanoclaw.lan
-192.168.86.15 notifications.lan
+192.168.150.23 nanoclaw.lan
+192.168.150.15 notifications.lan
