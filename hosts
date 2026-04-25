@@ -59,3 +59,6 @@
 192.168.86.14 proxmox-04.lan
 
 192.168.86.156 xerox-b210-wired.lan
+
+192.168.86.23 nanoclaw.lan
+192.168.86.15 notifications.lan
