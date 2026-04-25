@@ -36,6 +36,7 @@
 192.168.150.250 dns-03.markridgwell.com
 192.168.150.250 dns-04.markridgwell.com
 192.168.150.250 dns.markridgwell.com
+192.168.150.250 github-api.markridgwell.com
 
 
 # Pre-cache of DNS Servers
