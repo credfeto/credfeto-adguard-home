@@ -36,19 +36,20 @@
 192.168.150.250 dns-03.markridgwell.com
 192.168.150.250 dns-04.markridgwell.com
 192.168.150.250 dns.markridgwell.com
+192.168.150.250 git-workflow.markridgwell.com
 192.168.150.250 github-api.markridgwell.com
 192.168.150.250 proxy.markridgwell.com
 
 
 # Pre-cache of DNS Servers
-1.1.1.1 1dot1dot1dot1.cloudflare-dns.com  
-1.0.0.1 1dot1dot1dot1.cloudflare-dns.com  
+1.1.1.1 1dot1dot1dot1.cloudflare-dns.com
+1.0.0.1 1dot1dot1dot1.cloudflare-dns.com
 1.1.1.1 mozilla.cloudflare-dns.com
 1.0.0.1 mozilla.cloudflare-dns.com
-1.1.1.2 security.cloudflare-dns.com  
+1.1.1.2 security.cloudflare-dns.com
 1.0.0.2 security.cloudflare-dns.com
-8.8.8.8 dns.google  
-8.8.4.4 dns.google  
+8.8.8.8 dns.google
+8.8.4.4 dns.google
 9.9.9.9 dns.quad9.net
 149.112.112.112 dns.quad9.net
 
