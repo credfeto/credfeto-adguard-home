@@ -64,3 +64,11 @@
 
 192.168.150.23 nanoclaw.lan
 192.168.150.15 notifications.lan
+192.168.150.250 proxy.lan
+
+192.168.90.253 sql-server.lan
+
+192.168.42.241 dns-01.dns.lan
+192.168.42.242 dns-02.dns.lan
+192.168.42.243 dns-03.dns.lan
+192.168.42.244 dns-04.dns.lan
