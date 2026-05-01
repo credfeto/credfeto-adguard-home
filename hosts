@@ -6,39 +6,39 @@
 2606:4700:3033::6815:55d8 notes.markridgwell.com
 
 # INTERNAL-SERVICES
+192.168.150.250 api-nuget.markridgwell.com
 192.168.150.250 audiobookshelf.markridgwell.com
 192.168.150.250 aur-repo.markridgwell.com
 192.168.150.250 aur.markridgwell.com
 192.168.150.250 cctv.markridgwell.com
 192.168.150.250 defi.markridgwell.com
+192.168.150.250 dev-cache.markridgwell.com
+192.168.150.250 dns-01.markridgwell.com
+192.168.150.250 dns-02.markridgwell.com
+192.168.150.250 dns-03.markridgwell.com
+192.168.150.250 dns-04.markridgwell.com
+192.168.150.250 dns.markridgwell.com
+192.168.150.250 docker-cache.markridgwell.com
+192.168.150.250 docker-registry.markridgwell.com
+192.168.150.250 dotnet.markridgwell.com
 192.168.150.250 flathub.markridgwell.com
+192.168.150.250 funfair-nuget.markridgwell.com
+192.168.150.250 funfair-prerelease-nuget.markridgwell.com
+192.168.150.250 git-workflow.markridgwell.com
+192.168.150.250 github-api.markridgwell.com
 192.168.150.250 home.markridgwell.com
 192.168.150.250 homeassistant.markridgwell.com
 192.168.150.250 inbucket.markridgwell.com
 192.168.150.250 jellyfin.markridgwell.com
 192.168.150.250 linux-cache-01.markridgwell.com
 192.168.150.250 linux-cache-02.markridgwell.com
+192.168.150.250 npm.markridgwell.com
 192.168.150.250 ollama.markridgwell.com
 192.168.150.250 pacman.markridgwell.com
 192.168.150.250 photos.markridgwell.com
 192.168.150.250 podcasts.markridgwell.com
-192.168.150.250 reolink.markridgwell.com
-192.168.150.250 api-nuget.markridgwell.com
-192.168.150.250 dev-cache.markridgwell.com
-192.168.150.250 docker-cache.markridgwell.com
-192.168.150.250 docker-registry.markridgwell.com
-192.168.150.250 dotnet.markridgwell.com
-192.168.150.250 funfair-nuget.markridgwell.com
-192.168.150.250 funfair-prerelease-nuget.markridgwell.com
-192.168.150.250 npm.markridgwell.com
-192.168.150.250 dns-01.markridgwell.com
-192.168.150.250 dns-02.markridgwell.com
-192.168.150.250 dns-03.markridgwell.com
-192.168.150.250 dns-04.markridgwell.com
-192.168.150.250 dns.markridgwell.com
-192.168.150.250 git-workflow.markridgwell.com
-192.168.150.250 github-api.markridgwell.com
 192.168.150.250 proxy.markridgwell.com
+192.168.150.250 reolink.markridgwell.com
 
 
 # Pre-cache of DNS Servers
