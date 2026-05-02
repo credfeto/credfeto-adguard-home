@@ -37,6 +37,10 @@ DNS_API_URL="${DNS_API_URL:-https://localhost:53443}"
 import_zone() {
     _ZONE_NAME="$(basename "$1" .db)"
     echo "sync-zones: importing ${_ZONE_NAME}..."
+    # Create zone first — zones/import requires it to exist; ignore error if already present
+    curl -sf -k -X POST \
+        "${DNS_API_URL}/api/zones/create?token=${DNS_API_TOKEN}&zone=${_ZONE_NAME}&type=Primary" \
+        > /dev/null 2>&1 || true
     curl -sf -k -X POST \
         "${DNS_API_URL}/api/zones/import?token=${DNS_API_TOKEN}&zone=${_ZONE_NAME}&overwrite=true" \
         -F "zoneFile=@$1" \
