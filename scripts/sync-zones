@@ -34,6 +34,14 @@ fi
 DNS_API_URL="$(grep -E '^[[:space:]]*DNS_API_URL[[:space:]]*=' "${ENV_FILE}" | tail -n 1 | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
 DNS_API_URL="${DNS_API_URL:-https://localhost:53443}"
 
+configure_server() {
+    echo "sync-zones: configuring server settings..."
+    curl -sf -k -X POST \
+        "${DNS_API_URL}/api/settings/set?token=${DNS_API_TOKEN}&webServiceEnableHttp3=true&enableDnsOverHttps=true&dnsOverHttpsPort=443&enableDnsOverHttp3=true" \
+        > /dev/null \
+        || echo "sync-zones: warning: server settings update failed" >&2
+}
+
 import_zone() {
     _ZONE_NAME="$(basename "$1" .db)"
     echo "sync-zones: importing ${_ZONE_NAME}..."
@@ -48,6 +56,7 @@ import_zone() {
 }
 
 if [ "${IMPORT_ALL}" = "true" ]; then
+    configure_server
     echo "sync-zones: importing all zones from ${BASEDIR}/zones/..."
     ERRORS=0
     for DB_FILE in "${BASEDIR}/zones"/*.db; do
