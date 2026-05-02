@@ -1,0 +1,47 @@
+#!/bin/sh
+
+set -e
+
+die() {
+    echo
+    echo "$@"
+    exit 1
+}
+
+SCRIPTDIR="$(dirname "$(readlink -f "$0")")"
+BASEDIR="$(dirname "$SCRIPTDIR")"
+
+ENV_FILE="${SCRIPTDIR}/.env"
+if [ ! -f "${ENV_FILE}" ]; then
+    die "No .env found at ${ENV_FILE}. Copy scripts/.env.example to scripts/.env and set DNS_API_TOKEN."
+fi
+
+DNS_API_TOKEN="$(grep -E '^[[:space:]]*DNS_API_TOKEN[[:space:]]*=' "${ENV_FILE}" | tail -n 1 | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+if [ -z "${DNS_API_TOKEN}" ]; then
+    die "DNS_API_TOKEN is not set or empty in ${ENV_FILE}"
+fi
+
+DNS_API_URL="$(grep -E '^[[:space:]]*DNS_API_URL[[:space:]]*=' "${ENV_FILE}" | tail -n 1 | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+DNS_API_URL="${DNS_API_URL:-https://localhost:53443}"
+
+PREV_HEAD="$(git -C "${BASEDIR}" rev-parse HEAD)"
+
+git -C "${BASEDIR}" pull
+
+NEW_HEAD="$(git -C "${BASEDIR}" rev-parse HEAD)"
+
+if [ "${PREV_HEAD}" = "${NEW_HEAD}" ]; then
+    echo "sync-zones: no changes pulled, nothing to do."
+    exit 0
+fi
+
+if git -C "${BASEDIR}" diff --quiet "${PREV_HEAD}..${NEW_HEAD}" -- zones/; then
+    echo "sync-zones: no zone changes in this pull, skipping reload."
+    exit 0
+fi
+
+echo "sync-zones: zone changes detected, reloading..."
+RESPONSE="$(curl -sf -k -X POST \
+    "${DNS_API_URL}/api/zones/reload?token=${DNS_API_TOKEN}" 2>&1)" \
+    || die "sync-zones: reload request failed: ${RESPONSE}"
+echo "sync-zones: zones reloaded."
