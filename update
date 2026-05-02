@@ -44,10 +44,17 @@ git -C "${BASEDIR}" pull
 
 sudo mkdir -p /data/technitium/config /data/technitium/logs
 
+# Ensure bind (dig) is installed — used by the self-test script.
+if ! command -v dig > /dev/null 2>&1; then
+    echo "Installing bind (dig)..."
+    sudo pacman -S --noconfirm bind || die "Failed to install bind"
+fi
+
 # Generate self-signed TLS certificate for DNS-over-HTTPS if not present.
 # Technitium requires a separate cert for the DoH/DoT listener (cert.pfx),
 # distinct from the admin web-console's self-signed cert.
 CERT_FILE="/data/technitium/config/cert.pfx"
+CERT_GENERATED=false
 if [ ! -f "${CERT_FILE}" ]; then
     echo "Generating self-signed TLS certificate for DNS-over-HTTPS..."
     TMPDIR="$(mktemp -d)"
@@ -66,9 +73,17 @@ if [ ! -f "${CERT_FILE}" ]; then
     sudo install -m 640 -o root -g root "${TMPDIR}/cert.pfx" "${CERT_FILE}"
     rm -rf "${TMPDIR}"
     echo "Certificate generated at ${CERT_FILE}"
+    CERT_GENERATED=true
 fi
 
 docker compose up -d --remove-orphans || die "Could not start container"
+
+# If the cert was freshly generated the DoH/DoT listener won't have bound port 443
+# (Technitium only reads the cert path at startup). Force a restart so it picks it up.
+if [ "${CERT_GENERATED}" = "true" ]; then
+    echo "Restarting container so DoH/DoT listener picks up new certificate..."
+    docker compose restart || die "Could not restart container"
+fi
 
 
 ## Admin UI (HTTPS web console)

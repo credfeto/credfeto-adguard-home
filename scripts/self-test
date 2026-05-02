@@ -1,0 +1,121 @@
+#!/bin/sh
+
+# Self-test script for the Technitium DNS server.
+# Runs a suite of checks against the local (or specified) server and
+# prints PASS / FAIL for each one.  Exit code is 0 only if all pass.
+#
+# Usage: self-test [HOST]
+#   HOST defaults to 127.0.0.1
+
+set -u
+
+HOST="${1:-127.0.0.1}"
+ADMIN_PORT="53443"
+DOH_PORT="443"
+DNS_PORT="53"
+
+# A minimal valid DNS query for "example.com A" in RFC 1035 wire format,
+# base64url-encoded (no padding) — used for DoH GET requests.
+# Wire bytes: txid=0x0001 flags=RD qdcount=1, www.example.com A IN
+DOH_QUERY="AAABAAABAAAAAAAAA3d3dwdleGFtcGxlA2NvbQAAAQAB"
+
+PASS=0
+FAIL=0
+
+ok() {
+    printf "  \033[32mPASS\033[0m  %s\n" "$1"
+    PASS=$((PASS + 1))
+}
+
+fail() {
+    printf "  \033[31mFAIL\033[0m  %s\n" "$1"
+    FAIL=$((FAIL + 1))
+}
+
+check() {
+    LABEL="$1"
+    shift
+    if "$@" > /dev/null 2>&1; then
+        ok "${LABEL}"
+    else
+        fail "${LABEL}"
+    fi
+}
+
+echo "Self-test: ${HOST}"
+echo "--------------------------------------------"
+
+# ---------------------------------------------------------------------------
+# DNS — UDP (plain)
+# ---------------------------------------------------------------------------
+check "DNS UDP (port ${DNS_PORT})" \
+    dig +short +time=5 +tries=1 @"${HOST}" -p "${DNS_PORT}" example.com A
+
+# ---------------------------------------------------------------------------
+# DNS — TCP
+# ---------------------------------------------------------------------------
+check "DNS TCP (port ${DNS_PORT})" \
+    dig +short +time=5 +tries=1 +tcp @"${HOST}" -p "${DNS_PORT}" example.com A
+
+# ---------------------------------------------------------------------------
+# DNS-over-HTTPS — HTTP/1.1 and HTTP/2  (curl picks best of the two)
+# ---------------------------------------------------------------------------
+DOH_STATUS="$(curl -sk --http2 -o /dev/null -w "%{http_code}" \
+    -H "Accept: application/dns-message" \
+    "https://${HOST}:${DOH_PORT}/dns-query?dns=${DOH_QUERY}" 2>/dev/null)"
+if [ "${DOH_STATUS}" = "200" ]; then
+    ok "DoH HTTP/1.1+2 (port ${DOH_PORT}, status ${DOH_STATUS})"
+else
+    fail "DoH HTTP/1.1+2 (port ${DOH_PORT}, status ${DOH_STATUS:-no response})"
+fi
+
+# ---------------------------------------------------------------------------
+# DNS-over-HTTPS — HTTP/3
+# ---------------------------------------------------------------------------
+DOH3_STATUS="$(curl -sk --http3-only -o /dev/null -w "%{http_code}" \
+    -H "Accept: application/dns-message" \
+    "https://${HOST}:${DOH_PORT}/dns-query?dns=${DOH_QUERY}" 2>/dev/null)"
+if [ "${DOH3_STATUS}" = "200" ]; then
+    ok "DoH HTTP/3 (port ${DOH_PORT}, status ${DOH3_STATUS})"
+else
+    fail "DoH HTTP/3 (port ${DOH_PORT}, status ${DOH3_STATUS:-no response})"
+fi
+
+# ---------------------------------------------------------------------------
+# HTTPS — Admin UI (port 53443)
+# Technitium returns 200 or 302 on the root; either means the service is up.
+# ---------------------------------------------------------------------------
+ADMIN_STATUS="$(curl -sk -o /dev/null -w "%{http_code}" \
+    "https://${HOST}:${ADMIN_PORT}/" 2>/dev/null)"
+case "${ADMIN_STATUS}" in
+    200|301|302)
+        ok "Admin UI HTTPS (port ${ADMIN_PORT}, status ${ADMIN_STATUS})"
+        ;;
+    *)
+        fail "Admin UI HTTPS (port ${ADMIN_PORT}, status ${ADMIN_STATUS:-no response})"
+        ;;
+esac
+
+# ---------------------------------------------------------------------------
+# DoH health-check endpoint — used by Traefik healthCheck
+# GET /dns-query with no dns= param; Technitium 302-redirects non-DoH requests.
+# A 200 or 302 here means the listener is alive.
+# ---------------------------------------------------------------------------
+HC_STATUS="$(curl -sk -o /dev/null -w "%{http_code}" \
+    "https://${HOST}:${DOH_PORT}/dns-query" 2>/dev/null)"
+case "${HC_STATUS}" in
+    200|302)
+        ok "DoH health-check endpoint (port ${DOH_PORT}, status ${HC_STATUS})"
+        ;;
+    *)
+        fail "DoH health-check endpoint (port ${DOH_PORT}, status ${HC_STATUS:-no response})"
+        ;;
+esac
+
+# ---------------------------------------------------------------------------
+# Summary
+# ---------------------------------------------------------------------------
+echo "--------------------------------------------"
+TOTAL=$((PASS + FAIL))
+echo "Results: ${PASS}/${TOTAL} passed"
+[ "${FAIL}" -eq 0 ]
