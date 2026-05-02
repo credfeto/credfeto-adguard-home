@@ -6,37 +6,63 @@ die() {
     exit 1
 }
 
+allow_port() {
+    PROTO="$1"
+    PORT="$2"
+    for SUBNET in "10.0.0.0/8" "192.168.0.0/16" "172.16.0.0/12"; do
+        RULE="rule family=\"ipv4\" source address=\"${SUBNET}\" port protocol=\"${PROTO}\" port=\"${PORT}\" accept"
+        if ! sudo firewall-cmd --query-rich-rule="${RULE}" --permanent > /dev/null 2>&1; then
+            sudo firewall-cmd --permanent --add-rich-rule="${RULE}" || die "Failed to add firewall rule: ${RULE}"
+        fi
+    done
+}
+
+block_port() {
+    PROTO="$1"
+    PORT="$2"
+    RULE="rule port protocol=\"${PROTO}\" port=\"${PORT}\" reject"
+    if ! sudo firewall-cmd --query-rich-rule="${RULE}" --permanent > /dev/null 2>&1; then
+        sudo firewall-cmd --permanent --add-rich-rule="${RULE}" || die "Failed to add firewall rule: ${RULE}"
+    fi
+}
+
+
 
 BASEDIR="$(dirname "$(readlink -f "$0")")"
 
-git pull
+ENV_FILE="${BASEDIR}/.env"
+if [ ! -f "${ENV_FILE}" ]; then
+    die "No .env file found at ${ENV_FILE}. Create one with DNS_ADMIN_PASSWORD=<password>"
+fi
 
-docker compose up -d --remove-orphans | die "Could not start container"
+DNS_ADMIN_PASSWORD="$(grep -E '^[[:space:]]*DNS_ADMIN_PASSWORD[[:space:]]*=' "${ENV_FILE}" | tail -n 1 | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+if [ -z "${DNS_ADMIN_PASSWORD}" ]; then
+    die "DNS_ADMIN_PASSWORD is not set or is empty in ${ENV_FILE}"
+fi
+
+git -C "${BASEDIR}" pull
+
+sudo mkdir -p /data/technitium/config /data/technitium/logs
+
+docker compose up -d --remove-orphans || die "Could not start container"
 
 
-## Admin UI
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="10.0.0.0/8" port protocol="tcp" port="3000" accept'
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.0.0/16" port protocol="tcp" port="3000" accept'
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="172.16.0.0/20" port protocol="tcp" port="3000" accept'
+## Admin UI (HTTPS web console)
+allow_port tcp 53443
 
-# DNS/TCP
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="10.0.0.0/8" port protocol="tcp" port="53" accept'
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.0.0/16" port protocol="tcp" port="53" accept'
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="172.16.0.0/20" port protocol="tcp" port="53" accept'
+# DNS
+allow_port tcp 53
+allow_port udp 53
 
-# DNS/UDP
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="10.0.0.0/8" port protocol="udp" port="53" accept'
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.0.0/16" port protocol="udp" port="53" accept'
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="172.16.0.0/20" port protocol="udp" port="53" accept'
+# DNS-over-HTTPS
+allow_port tcp 443
+allow_port udp 443
 
-# DOH/TCP
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="10.0.0.0/8" port protocol="tcp" port="443" accept'
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.0.0/16" port protocol="tcp" port="443" accept'
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="172.16.0.0/20" port protocol="tcp" port="443" accept'
-
-# DOH/UDP
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="10.0.0.0/8" port protocol="udp" port="443" accept'
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.0.0/16" port protocol="udp" port="443" accept'
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="172.16.0.0/20" port protocol="udp" port="443" accept'
+# Explicitly block DHCP — Technitium includes a DHCP server but it should
+# never serve on this host; reject at the firewall regardless of app config.
+block_port udp 67
+block_port udp 68
 
 sudo firewall-cmd --reload
+
+"${BASEDIR}/scripts/sync-zones" --all

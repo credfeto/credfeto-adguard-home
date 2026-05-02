@@ -10,34 +10,26 @@ services:
       WATCHTOWER_NOTIFICATIONS_HOSTNAME: cctv
       WATCHTOWER_POLL_INTERVAL: 3600
 
-  adguard:
-    image: adguard/adguardhome:latest
-    container_name: adguard
-    hostname: adguard
+  dns-server:
+    image: docker.io/technitium/dns-server:latest
+    container_name: dns-server
+    hostname: dns-server
     restart: unless-stopped
-    stop_grace_period: 60s
-    stop_signal: SIGINT
-    ports:
-      - "53:53/udp" # Plain DNS
-      - "53:53/tcp" # Plain DNS
-      # - "67:67/udp" # DHCP
-      - "80:80/tcp" # DNS over HTTPS
-      - "443:443/tcp" # DNS over HTTPS
-      - "443:443/udp" # DNS over HTTPS
-      - "3000:3000/tcp" # Admin
-      # - "853:853/tcp" # DNS over TLS
-      # - "853:853/udp" # DNS over QUIC
-      # - "784:784/udp" # DNS over QUIC
-      # - "8853:8853/udp" # DNS over QUIC
+    network_mode: host
+    environment:
+      - DNS_SERVER_DOMAIN=dns-server
+      - DNS_SERVER_ADMIN_PASSWORD=${DNS_ADMIN_PASSWORD}
+      - DNS_SERVER_WEB_SERVICE_ENABLE_HTTPS=true
+      - DNS_SERVER_WEB_SERVICE_USE_SELF_SIGNED_CERT=true
+      - DNS_SERVER_WEB_SERVICE_HTTPS_PORT=53443
+      - DNS_SERVER_RECURSION=AllowOnlyForPrivateNetworks
+      - DNS_SERVER_FORWARDERS=https://security.cloudflare-dns.com/dns-query
+      - DNS_SERVER_FORWARDER_PROTOCOL=Https
+      - DNS_SERVER_ENABLE_BLOCKING=true
+      - DNS_SERVER_ALLOW_TXT_BLOCKING_REPORT=true
+      - DNS_SERVER_BLOCK_LIST_URLS=https://abp.markridgwell.com/hosts.txt,https://abp.markridgwell.com/adblock.txt,https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/doh-vpn-proxy-bypass.txt,https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/multi.txt,https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/hoster.txt
+      - DNS_SERVER_LOG_USING_LOCAL_TIME=true
     volumes:
-      - /data/adguard/conf:/opt/adguardhome/conf
-      - /data/adguard/work:/opt/adguardhome/work
-      - ./hosts:/etc/hosts:r
-      - ./certs:/opt/certs:r
-    networks:
-      backend:
-
-networks:
-  backend:
-    driver: bridge
-    enable_ipv6: true
+      - /data/technitium/config:/etc/dns
+      - /data/technitium/logs:/var/log/technitium/dns
+      - ./zones:/etc/dns/config/zones

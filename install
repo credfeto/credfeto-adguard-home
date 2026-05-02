@@ -1,0 +1,53 @@
+#!/bin/sh
+
+set -e
+
+die() {
+    echo
+    echo "$@"
+    exit 1
+}
+
+BASEDIR="$(dirname "$(readlink -f "$0")")"
+SYNC_SCRIPT="${BASEDIR}/scripts/sync-zones"
+
+[ -f "${SYNC_SCRIPT}" ] || die "sync-zones not found at ${SYNC_SCRIPT}"
+[ -x "${SYNC_SCRIPT}" ] || die "sync-zones is not executable: ${SYNC_SCRIPT}"
+
+SERVICE_NAME="technitium-sync-zones"
+SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
+TIMER_FILE="/etc/systemd/system/${SERVICE_NAME}.timer"
+
+echo "Installing ${SERVICE_FILE}..."
+sudo tee "${SERVICE_FILE}" > /dev/null << EOF
+[Unit]
+Description=Technitium DNS zone sync
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=${SYNC_SCRIPT}
+StandardOutput=journal
+StandardError=journal
+EOF
+
+echo "Installing ${TIMER_FILE}..."
+sudo tee "${TIMER_FILE}" > /dev/null << EOF
+[Unit]
+Description=Technitium DNS zone sync every 15 minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now "${SERVICE_NAME}.timer"
+
+echo "Installed. Timer status:"
+sudo systemctl status "${SERVICE_NAME}.timer" --no-pager

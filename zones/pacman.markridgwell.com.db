@@ -1,0 +1,12 @@
+$ORIGIN pacman.markridgwell.com.
+$TTL 3600
+@ IN SOA dns-server. admin. (
+    1       ; serial
+    900     ; refresh
+    300     ; retry
+    604800  ; expire
+    300     ; minimum TTL
+)
+@ IN NS dns-server.
+
+@ IN CNAME proxy.markridgwell.com.

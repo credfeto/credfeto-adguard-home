@@ -1,0 +1,13 @@
+$ORIGIN proxy.markridgwell.com.
+$TTL 3600
+@ IN SOA dns-server. admin. (
+    1       ; serial
+    900     ; refresh
+    300     ; retry
+    604800  ; expire
+    300     ; minimum TTL
+)
+@ IN NS dns-server.
+
+; Canonical A record — all internal services CNAME here
+@ IN A 192.168.150.250
