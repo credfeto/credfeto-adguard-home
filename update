@@ -17,6 +17,15 @@ allow_port() {
     done
 }
 
+block_port() {
+    PROTO="$1"
+    PORT="$2"
+    RULE="rule port protocol=\"${PROTO}\" port=\"${PORT}\" reject"
+    if ! sudo firewall-cmd --query-rich-rule="${RULE}" --permanent > /dev/null 2>&1; then
+        sudo firewall-cmd --permanent --add-rich-rule="${RULE}" || die "Failed to add firewall rule: ${RULE}"
+    fi
+}
+
 
 
 BASEDIR="$(dirname "$(readlink -f "$0")")"
@@ -48,5 +57,10 @@ allow_port udp 53
 # DNS-over-HTTPS
 allow_port tcp 443
 allow_port udp 443
+
+# Explicitly block DHCP — Technitium includes a DHCP server but it should
+# never serve on this host; reject at the firewall regardless of app config.
+block_port udp 67
+block_port udp 68
 
 sudo firewall-cmd --reload
