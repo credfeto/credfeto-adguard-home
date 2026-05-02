@@ -8,21 +8,51 @@ die() {
     exit 1
 }
 
+IMPORT_ALL=false
+case "$1" in
+    --all) IMPORT_ALL=true ;;
+    "")    ;;
+    *)     die "Usage: sync-zones [--all]" ;;
+esac
+
 SCRIPTDIR="$(dirname "$(readlink -f "$0")")"
 BASEDIR="$(dirname "$SCRIPTDIR")"
 
 ENV_FILE="${SCRIPTDIR}/.env"
 if [ ! -f "${ENV_FILE}" ]; then
-    die "No .env found at ${ENV_FILE}. Copy scripts/.env.example to scripts/.env and set DNS_API_TOKEN."
+    echo "sync-zones: no .env at ${ENV_FILE} — skipping zone sync."
+    echo "sync-zones: copy scripts/.env.example and set DNS_API_TOKEN to enable."
+    exit 0
 fi
 
 DNS_API_TOKEN="$(grep -E '^[[:space:]]*DNS_API_TOKEN[[:space:]]*=' "${ENV_FILE}" | tail -n 1 | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
 if [ -z "${DNS_API_TOKEN}" ]; then
-    die "DNS_API_TOKEN is not set or empty in ${ENV_FILE}"
+    echo "sync-zones: DNS_API_TOKEN not set in ${ENV_FILE} — skipping zone sync."
+    exit 0
 fi
 
 DNS_API_URL="$(grep -E '^[[:space:]]*DNS_API_URL[[:space:]]*=' "${ENV_FILE}" | tail -n 1 | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
 DNS_API_URL="${DNS_API_URL:-https://localhost:53443}"
+
+import_zone() {
+    _ZONE_NAME="$(basename "$1" .db)"
+    echo "sync-zones: importing ${_ZONE_NAME}..."
+    curl -sf -k -X POST \
+        "${DNS_API_URL}/api/zones/import?token=${DNS_API_TOKEN}&zone=${_ZONE_NAME}&overwrite=true" \
+        -F "zoneFile=@$1" \
+        || { echo "sync-zones: import failed for ${_ZONE_NAME}" >&2; return 1; }
+}
+
+if [ "${IMPORT_ALL}" = "true" ]; then
+    echo "sync-zones: importing all zones from ${BASEDIR}/zones/..."
+    ERRORS=0
+    for DB_FILE in "${BASEDIR}/zones"/*.db; do
+        import_zone "${DB_FILE}" || ERRORS=$((ERRORS + 1))
+    done
+    [ "${ERRORS}" -eq 0 ] || die "sync-zones: ${ERRORS} zone(s) failed to import."
+    echo "sync-zones: all zones imported."
+    exit 0
+fi
 
 PREV_HEAD="$(git -C "${BASEDIR}" rev-parse HEAD)"
 
@@ -35,13 +65,23 @@ if [ "${PREV_HEAD}" = "${NEW_HEAD}" ]; then
     exit 0
 fi
 
-if git -C "${BASEDIR}" diff --quiet "${PREV_HEAD}..${NEW_HEAD}" -- zones/; then
-    echo "sync-zones: no zone changes in this pull, skipping reload."
+CHANGED_ZONES="$(git -C "${BASEDIR}" diff --name-only "${PREV_HEAD}..${NEW_HEAD}" -- 'zones/*.db')"
+
+if [ -z "${CHANGED_ZONES}" ]; then
+    echo "sync-zones: no zone changes in this pull, skipping import."
     exit 0
 fi
 
-echo "sync-zones: zone changes detected, reloading..."
-RESPONSE="$(curl -sf -k -X POST \
-    "${DNS_API_URL}/api/zones/reload?token=${DNS_API_TOKEN}" 2>&1)" \
-    || die "sync-zones: reload request failed: ${RESPONSE}"
-echo "sync-zones: zones reloaded."
+echo "sync-zones: zone changes detected, importing..."
+ERRORS=0
+for ZONE_FILE in ${CHANGED_ZONES}; do
+    ABS_FILE="${BASEDIR}/${ZONE_FILE}"
+    if [ ! -f "${ABS_FILE}" ]; then
+        echo "sync-zones: $(basename "${ZONE_FILE}" .db) removed from git — delete via admin UI if needed"
+        continue
+    fi
+    import_zone "${ABS_FILE}" || ERRORS=$((ERRORS + 1))
+done
+
+[ "${ERRORS}" -eq 0 ] || die "sync-zones: ${ERRORS} zone(s) failed to import."
+echo "sync-zones: done."

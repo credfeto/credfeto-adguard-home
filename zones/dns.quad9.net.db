@@ -1,0 +1,14 @@
+$ORIGIN dns.quad9.net.
+$TTL 3600
+@ IN SOA dns-server. admin. (
+    1       ; serial
+    900     ; refresh
+    300     ; retry
+    604800  ; expire
+    300     ; minimum TTL
+)
+@ IN NS dns-server.
+
+; Quad9 DNS
+@ IN A 9.9.9.9
+@ IN A 149.112.112.112

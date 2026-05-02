@@ -48,9 +48,17 @@ Open the admin UI at `https://<host-ip>:53443`, log in with the password from `.
 DNS_API_TOKEN=your-token-here
 ```
 
-### 5. Import existing hosts
+### 5. Import zones
 
-Zone files committed to `zones/` are bind-mounted into the container at `/etc/dns/config/zones/` and loaded on startup. To migrate the legacy `hosts` file, create zones via the admin UI — the files will be written directly into `zones/` and can then be committed.
+Zone files are stored as BIND-format `.db` files in `zones/`. After the container is running and the API token is configured, import all zones:
+
+```sh
+./scripts/sync-zones --all
+```
+
+This imports every `.db` file in `zones/` into Technitium via its API. The imported zones are persisted by Technitium in the same directory (as `.zone` files, which are `.gitignore`d).
+
+To add a new host, either edit an existing zone file or create a new `.db` file and run `sync-zones --all` again.
 
 ---
 
@@ -66,10 +74,16 @@ Pulls the latest repo changes (including any zone file updates), reloads zones i
 
 ### Zone changes
 
-Edit zone files in `zones/`, commit, and push. The systemd timer will pick up the changes within 15 minutes and reload zones automatically via the Technitium API. To apply immediately:
+Edit zone files in `zones/`, commit, and push. The systemd timer will pick up the changes within 15 minutes and import the updated zones via the Technitium API. To apply immediately:
 
 ```sh
 ./scripts/sync-zones
+```
+
+To import all zones regardless of git state (e.g. after a fresh deploy):
+
+```sh
+./scripts/sync-zones --all
 ```
 
 ### Restarting the container
@@ -86,7 +100,7 @@ docker compose restart dns-server
 | --- | --- |
 | `install` | Installs and enables the systemd timer for zone sync |
 | `update` | Full update: pull, start container, apply firewall rules |
-| `scripts/sync-zones` | Pull latest; reload zones via API only if `zones/` changed |
+| `scripts/sync-zones` | Pull latest; import changed zones via API. `--all` imports every zone. |
 | `reset` | Stop and remove containers, then run `update` |
 
 ## Files
@@ -107,6 +121,30 @@ docker compose restart dns-server
 | `/data/technitium/config` | `/etc/dns` | Technitium configuration (persists across restarts) |
 | `/data/technitium/logs` | `/var/log/technitium/dns` | DNS query logs |
 | `./zones` | `/etc/dns/config/zones` | Zone files (version-controlled) |
+
+## Zone file layout
+
+Zones are maintained as BIND-format `.db` files in `zones/`. Technitium writes its internal `.zone` files alongside them (`.gitignore`d).
+
+| File | Zone type | Purpose |
+| --- | --- | --- |
+| `lan.db` | Primary | `.lan` hostnames (Proxmox nodes, network devices) |
+| `dns.lan.db` | Primary | DNS server hostnames |
+| `proxy.markridgwell.com.db` | Primary | Canonical A record → `192.168.150.250` |
+| `<service>.markridgwell.com.db` | Override | Per-service CNAME → `proxy.markridgwell.com` |
+| `<resolver>.db` | Override | DoH resolver IP overrides (Cloudflare, Google, Quad9) |
+
+**Split-brain DNS:** Each `<service>.markridgwell.com` is its own override zone (not a full `markridgwell.com` zone), so Cloudflare remains authoritative for all other names under `markridgwell.com`.
+
+**Adding a new internal service:**
+
+```sh
+# Point a new subdomain at the proxy:
+cp zones/home.markridgwell.com.db zones/newservice.markridgwell.com.db
+# Edit the $ORIGIN line, commit, push — timer will import within 15 min.
+```
+
+**Changing the proxy IP:** Edit `proxy.markridgwell.com.db` — all CNAME-based services follow automatically.
 
 ## Security notes
 
