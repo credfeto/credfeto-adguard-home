@@ -17,10 +17,15 @@ services:
     restart: unless-stopped
     ports:
       - "53443:53443/tcp" # DNS web console (HTTPS)
+      - "[::]:53443:53443/tcp" # DNS web console (HTTPS) IPv6
       - "53:53/udp" # DNS service
       - "53:53/tcp" # DNS service
+      - "[::]:53:53/udp" # DNS service IPv6
+      - "[::]:53:53/tcp" # DNS service IPv6
       - "443:443/udp" # DNS-over-HTTPS service (HTTP/3)
       - "443:443/tcp" # DNS-over-HTTPS service (HTTP/1.1, HTTP/2)
+      - "[::]:443:443/udp" # DNS-over-HTTPS service (HTTP/3) IPv6
+      - "[::]:443:443/tcp" # DNS-over-HTTPS service (HTTP/1.1, HTTP/2) IPv6
     environment:
       - DNS_SERVER_DOMAIN=dns-server
       - DNS_SERVER_ADMIN_PASSWORD=${DNS_ADMIN_PASSWORD}
