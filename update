@@ -17,16 +17,6 @@ allow_port() {
     done
 }
 
-allow_port6() {
-    PROTO="$1"
-    PORT="$2"
-    for SUBNET in "fd00::/8" "fe80::/10"; do
-        RULE="rule family=\"ipv6\" source address=\"${SUBNET}\" port protocol=\"${PROTO}\" port=\"${PORT}\" accept"
-        if ! sudo firewall-cmd --query-rich-rule="${RULE}" --permanent > /dev/null 2>&1; then
-            sudo firewall-cmd --permanent --add-rich-rule="${RULE}" || die "Failed to add firewall rule: ${RULE}"
-        fi
-    done
-}
 
 
 BASEDIR="$(dirname "$(readlink -f "$0")")"
@@ -50,18 +40,13 @@ docker compose up -d --remove-orphans || die "Could not start container"
 
 ## Admin UI (HTTPS web console)
 allow_port tcp 53443
-allow_port6 tcp 53443
 
 # DNS
 allow_port tcp 53
 allow_port udp 53
-allow_port6 tcp 53
-allow_port6 udp 53
 
 # DNS-over-HTTPS
 allow_port tcp 443
 allow_port udp 443
-allow_port6 tcp 443
-allow_port6 udp 443
 
 sudo firewall-cmd --reload
