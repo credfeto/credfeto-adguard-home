@@ -14,7 +14,7 @@ if [ ! -f "${ENV_FILE}" ]; then
     die "No .env file found at ${ENV_FILE}. Create one with DNS_ADMIN_PASSWORD=<password>"
 fi
 
-DNS_ADMIN_PASSWORD="$(grep -E '^[[:space:]]*DNS_ADMIN_PASSWORD[[:space:]]*=' "${ENV_FILE}" | tail -n 1 | cut -d= -f2- | tr -d '[:space:]')"
+DNS_ADMIN_PASSWORD="$(grep -E '^[[:space:]]*DNS_ADMIN_PASSWORD[[:space:]]*=' "${ENV_FILE}" | tail -n 1 | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
 if [ -z "${DNS_ADMIN_PASSWORD}" ]; then
     die "DNS_ADMIN_PASSWORD is not set or is empty in ${ENV_FILE}"
 fi
