@@ -33,5 +33,3 @@ services:
       - /data/technitium/config:/etc/dns
       - /data/technitium/logs:/var/log/technitium/dns
       - ./zones:/etc/dns/config/zones
-    sysctls:
-      - net.ipv4.ip_local_port_range=1024 65535
