@@ -9,4 +9,4 @@ $TTL 3600
 )
 @ IN NS dns-server.
 
-@ IN CNAME proxy.markridgwell.com.
+@ IN A 192.168.150.250
