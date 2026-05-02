@@ -50,15 +50,9 @@ DNS_API_TOKEN=your-token-here
 
 ### 5. Import zones
 
-Zone files are stored as BIND-format `.db` files in `zones/`. After the container is running and the API token is configured, import all zones:
+Paste the API token into `scripts/.env`, then run `./update` again. At the end of `update`, `sync-zones --all` is called automatically and imports every `.db` file in `zones/` into Technitium.
 
-```sh
-./scripts/sync-zones --all
-```
-
-This imports every `.db` file in `zones/` into Technitium via its API. The imported zones are persisted by Technitium in the same directory (as `.zone` files, which are `.gitignore`d).
-
-To add a new host, either edit an existing zone file or create a new `.db` file and run `sync-zones --all` again.
+The imported zones are persisted by Technitium in the same directory (as `.zone` files, which are `.gitignore`d).
 
 ---
 
@@ -70,7 +64,7 @@ To add a new host, either edit an existing zone file or create a new `.db` file 
 ./update
 ```
 
-Pulls the latest repo changes (including any zone file updates), reloads zones if they changed, then ensures the container is running and firewall rules are current.
+Pulls the latest repo changes, ensures the container is running, applies firewall rules, then imports all zones via `sync-zones --all`.
 
 ### Zone changes
 

@@ -40,7 +40,7 @@ if [ -z "${DNS_ADMIN_PASSWORD}" ]; then
     die "DNS_ADMIN_PASSWORD is not set or is empty in ${ENV_FILE}"
 fi
 
-"${BASEDIR}/scripts/sync-zones"
+git -C "${BASEDIR}" pull
 
 sudo mkdir -p /data/technitium/config /data/technitium/logs
 
@@ -64,3 +64,5 @@ block_port udp 67
 block_port udp 68
 
 sudo firewall-cmd --reload
+
+"${BASEDIR}/scripts/sync-zones" --all
