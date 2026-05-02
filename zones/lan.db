@@ -9,6 +9,10 @@ $TTL 3600
 )
 @ IN NS dns-server.
 
+dns-01              IN A 192.168.42.241
+dns-02              IN A 192.168.42.242
+dns-03              IN A 192.168.42.243
+dns-04              IN A 192.168.42.244
 proxmox-01          IN A 192.168.86.11
 proxmox-02          IN A 192.168.86.12
 proxmox-03          IN A 192.168.86.13
