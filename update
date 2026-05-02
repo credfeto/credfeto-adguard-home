@@ -6,6 +6,17 @@ die() {
     exit 1
 }
 
+allow_port() {
+    PROTO="$1"
+    PORT="$2"
+    for SUBNET in "10.0.0.0/8" "192.168.0.0/16" "172.16.0.0/12"; do
+        RULE="rule family=\"ipv4\" source address=\"${SUBNET}\" port protocol=\"${PROTO}\" port=\"${PORT}\" accept"
+        if ! sudo firewall-cmd --query-rich-rule="${RULE}" --permanent > /dev/null 2>&1; then
+            sudo firewall-cmd --permanent --add-rich-rule="${RULE}" || die "Failed to add firewall rule: ${RULE}"
+        fi
+    done
+}
+
 
 BASEDIR="$(dirname "$(readlink -f "$0")")"
 
@@ -21,32 +32,20 @@ fi
 
 git pull
 
+sudo mkdir -p /data/technitium/config /data/technitium/logs
+
 docker compose up -d --remove-orphans || die "Could not start container"
 
 
 ## Admin UI (HTTPS web console)
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="10.0.0.0/8" port protocol="tcp" port="53443" accept'
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.0.0/16" port protocol="tcp" port="53443" accept'
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="172.16.0.0/12" port protocol="tcp" port="53443" accept'
+allow_port tcp 53443
 
-# DNS/TCP
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="10.0.0.0/8" port protocol="tcp" port="53" accept'
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.0.0/16" port protocol="tcp" port="53" accept'
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="172.16.0.0/12" port protocol="tcp" port="53" accept'
+# DNS
+allow_port tcp 53
+allow_port udp 53
 
-# DNS/UDP
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="10.0.0.0/8" port protocol="udp" port="53" accept'
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.0.0/16" port protocol="udp" port="53" accept'
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="172.16.0.0/12" port protocol="udp" port="53" accept'
-
-# DOH/TCP
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="10.0.0.0/8" port protocol="tcp" port="443" accept'
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.0.0/16" port protocol="tcp" port="443" accept'
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="172.16.0.0/12" port protocol="tcp" port="443" accept'
-
-# DOH/UDP
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="10.0.0.0/8" port protocol="udp" port="443" accept'
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.0.0/16" port protocol="udp" port="443" accept'
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="172.16.0.0/12" port protocol="udp" port="443" accept'
+# DNS-over-HTTPS
+allow_port tcp 443
+allow_port udp 443
 
 sudo firewall-cmd --reload
