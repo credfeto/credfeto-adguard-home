@@ -2,6 +2,8 @@
 
 Technitium DNS Server running in Docker with host networking, managed block lists, and version-controlled zone files.
 
+See `CHANGELOG.md` for release history and notable changes.
+
 ## Prerequisites
 
 - Docker with Compose plugin
