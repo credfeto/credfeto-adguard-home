@@ -1,7 +1,7 @@
 $ORIGIN lan.
 $TTL 3600
 @ IN SOA dns-server. admin. (
-    1       ; serial
+    2       ; serial
     900     ; refresh
     300     ; retry
     604800  ; expire
@@ -17,6 +17,8 @@ proxmox-01          IN A 192.168.86.11
 proxmox-02          IN A 192.168.86.12
 proxmox-03          IN A 192.168.86.13
 proxmox-04          IN A 192.168.86.14
+dev-upgrader-01     IN A 192.168.150.20
+dev-upgrader-02     IN A 192.168.150.21
 xerox-b210-wired    IN A 192.168.86.156
 nanoclaw            IN A 192.168.150.23
 notifications       IN A 192.168.150.15
