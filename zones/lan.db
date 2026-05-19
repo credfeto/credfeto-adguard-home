@@ -23,4 +23,4 @@ xerox-b210-wired    IN A 192.168.86.156
 nanoclaw            IN A 192.168.150.23
 notifications       IN A 192.168.150.15
 proxy               IN A 192.168.150.250
-sql-server          IN A 192.168.90.253
+sql-server          IN A 192.168.90.254
