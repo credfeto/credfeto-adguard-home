@@ -26,6 +26,7 @@ dev-upgrader-02     IN A 192.168.150.21
 nanoclaw            IN A 192.168.150.23
 linux-cache-01      IN A 192.168.150.200
 linux-cache-02      IN A 192.168.150.201
+monitoring          IN A 192.168.150.135
 arch-vm-test        IN A 192.168.150.177
 proxy               IN A 192.168.150.250
-monitoring          IN A 192.168.150.135
+keys                IN A 192.168.150.220
