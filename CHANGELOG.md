@@ -13,7 +13,7 @@ Please ADD ALL Changes to the UNRELEASED SECTION and not a specific release
 - Added `dev-upgrader-01.lan` (`192.168.150.20`) to `zones/lan.db`.
 - Added `dev-upgrader-02.lan` (`192.168.150.21`) to `zones/lan.db`.
 - Added `linux-cache-01.lan` (`192.168.150.200`), `linux-cache-02.lan` (`192.168.150.201`), `defi.lan` (`192.168.150.12`), and `arch-vm-test.lan` (`192.168.150.247`) to `zones/lan.db`.
-- DNS record for cctv.markridgwell.com pointing to 192.168.60.180
+- DNS record for cctv.markridgwell.com pointing to proxy on 192.168.150.250
 ### Fixed
 ### Changed
 - Removed the legacy repository `hosts` file workflow; zone files in `zones/` are now the source of truth.
