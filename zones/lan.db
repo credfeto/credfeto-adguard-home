@@ -28,3 +28,4 @@ linux-cache-01      IN A 192.168.150.200
 linux-cache-02      IN A 192.168.150.201
 arch-vm-test        IN A 192.168.150.135
 proxy               IN A 192.168.150.250
+monitoring          IN A 192.168.150.135
