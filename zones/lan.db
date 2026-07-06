@@ -30,3 +30,4 @@ monitoring          IN A 192.168.150.135
 arch-vm-test        IN A 192.168.150.177
 proxy               IN A 192.168.150.250
 keys                IN A 192.168.150.220
+docker-tegistry     IN A 192.168.150.202
