@@ -15,6 +15,7 @@ Please ADD ALL Changes to the UNRELEASED SECTION and not a specific release
 - Added `linux-cache-01.lan` (`192.168.150.200`), `linux-cache-02.lan` (`192.168.150.201`), `defi.lan` (`192.168.150.12`), and `arch-vm-test.lan` (`192.168.150.247`) to `zones/lan.db`.
 - DNS record for keys.markridgwell.com pointing to proxy on 192.168.150.250
 - DNS record for cctv.markridgwell.com pointing to proxy on 192.168.150.250
+- Support IPv6 (private ranges and 2a02:8010:61d5::/64) in firewall rules
 ### Fixed
 ### Changed
 - Removed the legacy repository `hosts` file workflow; zone files in `zones/` are now the source of truth.
