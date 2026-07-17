@@ -1,7 +1,7 @@
 $ORIGIN dns.lan.
 $TTL 3600
 @ IN SOA dns-server. admin. (
-    1       ; serial
+    2       ; serial
     900     ; refresh
     300     ; retry
     604800  ; expire
@@ -9,7 +9,13 @@ $TTL 3600
 )
 @ IN NS dns-server.
 
-dns-01  IN A 192.168.42.251
-dns-02  IN A 192.168.42.252
-dns-03  IN A 192.168.42.253
-dns-04  IN A 192.168.42.254
+dns-01  IN A 192.168.42.101
+dns-01  IN AAAA 2a02:8010:61d5:42::101
+dns-02  IN A 192.168.42.102
+dns-02  IN AAAA 2a02:8010:61d5:42::102
+dns-03  IN A 192.168.42.103
+dns-03  IN AAAA 2a02:8010:61d5:42::103
+dns-04  IN A 192.168.42.104
+dns-04  IN AAAA 2a02:8010:61d5:42::104
+dns-05  IN A 192.168.42.105
+dns-05  IN AAAA 2a02:8010:61d5:42::105
