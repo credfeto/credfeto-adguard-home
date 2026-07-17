@@ -15,7 +15,7 @@ allow_port() {
             sudo firewall-cmd --permanent --add-rich-rule="${RULE}" || die "Failed to add firewall rule: ${RULE}"
         fi
     done
-    for SUBNET in "fc00::/7" "fe80::/10" "2a02:8010:61d5::/64"; do
+    for SUBNET in "fc00::/7" "fe80::/10" "2a02:8010:61d5::/48"; do
         RULE="rule family=\"ipv6\" source address=\"${SUBNET}\" port protocol=\"${PROTO}\" port=\"${PORT}\" accept"
         if ! sudo firewall-cmd --query-rich-rule="${RULE}" --permanent > /dev/null 2>&1; then
             sudo firewall-cmd --permanent --add-rich-rule="${RULE}" || die "Failed to add firewall rule: ${RULE}"
