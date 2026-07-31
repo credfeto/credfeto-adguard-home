@@ -1,7 +1,7 @@
 $ORIGIN lan.
 $TTL 3600
 @ IN SOA dns-server. admin. (
-    5       ; serial
+    6       ; serial
     900     ; refresh
     300     ; retry
     604800  ; expire
@@ -19,6 +19,8 @@ dns-04              IN A 192.168.42.104
 dns-04              IN AAAA 2a02:8010:61d5:42::104
 dns-05              IN A 192.168.42.105
 dns-05              IN AAAA 2a02:8010:61d5:42::105
+dns-06              IN A 192.168.42.106
+dns-06              IN AAAA 2a02:8010:61d5:42::106
 proxmox-01          IN A 192.168.86.11
 proxmox-02          IN A 192.168.86.12
 proxmox-03          IN A 192.168.86.13
