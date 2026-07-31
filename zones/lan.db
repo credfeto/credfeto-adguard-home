@@ -1,7 +1,7 @@
 $ORIGIN lan.
 $TTL 3600
 @ IN SOA dns-server. admin. (
-    4       ; serial
+    16      ; serial
     900     ; refresh
     300     ; retry
     604800  ; expire
@@ -9,6 +9,9 @@ $TTL 3600
 )
 @ IN NS dns-server.
 
+firewall            IN A 192.168.10.1
+stairs-01           IN A 192.168.10.2
+bedroom             IN A 192.168.10.5
 dns-01              IN A 192.168.42.101
 dns-01              IN AAAA 2a02:8010:61d5:42::101
 dns-02              IN A 192.168.42.102
@@ -19,10 +22,14 @@ dns-04              IN A 192.168.42.104
 dns-04              IN AAAA 2a02:8010:61d5:42::104
 dns-05              IN A 192.168.42.105
 dns-05              IN AAAA 2a02:8010:61d5:42::105
+dns-06              IN A 192.168.42.106
+dns-06              IN AAAA 2a02:8010:61d5:42::106
 proxmox-01          IN A 192.168.86.11
 proxmox-02          IN A 192.168.86.12
 proxmox-03          IN A 192.168.86.13
 proxmox-04          IN A 192.168.86.14
+proxmox-05          IN A 192.168.86.15
+proxmox-06          IN A 192.168.86.16
 xerox-b210-wired    IN A 192.168.86.156
 sql-server          IN A 192.168.90.254
 defi                IN A 192.168.150.12
@@ -32,8 +39,15 @@ dev-upgrader-02     IN A 192.168.150.21
 nanoclaw            IN A 192.168.150.23
 linux-cache-01      IN A 192.168.150.200
 linux-cache-02      IN A 192.168.150.201
-monitoring          IN A 192.168.150.135
+monitoring          IN A 192.168.150.134
+development         IN A 192.168.150.176
 arch-vm-test        IN A 192.168.150.177
 proxy               IN A 192.168.150.250
 keys                IN A 192.168.150.220
-docker-tegistry     IN A 192.168.150.202
+docker-registry     IN A 192.168.150.202
+homepage            IN A 192.168.150.150
+gickup              IN A 192.168.150.13
+audio-bookshelf     IN A 192.168.150.16
+dev-cache-01        IN A 192.168.150.100
+dev-cache-02        IN A 192.168.150.101
+immich              IN A 192.168.150.154
