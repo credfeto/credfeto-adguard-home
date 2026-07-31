@@ -28,6 +28,7 @@ Please ADD ALL Changes to the UNRELEASED SECTION and not a specific release
 - Added `immich.lan` (`192.168.150.154`) to `zones/lan.db`.
 - Added `proxmox-05.lan` (`192.168.86.15`) and `proxmox-06.lan` (`192.168.86.16`) to `zones/lan.db`.
 - Added `firewall.lan` (`192.168.10.1`) to `zones/lan.db`.
+- Added new `network.lan` zone (`zones/network.lan.db`) with `stairs-01` (`192.168.10.2`) and `bedroom` (`192.168.10.5`); also added flat `stairs-01.lan` and `bedroom.lan` aliases to `zones/lan.db`.
 ### Fixed
 - Fixed typo in `zones/lan.db`: `docker-tegistry` renamed to `docker-registry` (`192.168.150.202`).
 - Corrected `monitoring.lan` IP in `zones/lan.db` from `192.168.150.135` to `192.168.150.134`.

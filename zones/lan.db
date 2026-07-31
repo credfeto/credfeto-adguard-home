@@ -1,7 +1,7 @@
 $ORIGIN lan.
 $TTL 3600
 @ IN SOA dns-server. admin. (
-    15      ; serial
+    16      ; serial
     900     ; refresh
     300     ; retry
     604800  ; expire
@@ -10,6 +10,8 @@ $TTL 3600
 @ IN NS dns-server.
 
 firewall            IN A 192.168.10.1
+stairs-01           IN A 192.168.10.2
+bedroom             IN A 192.168.10.5
 dns-01              IN A 192.168.42.101
 dns-01              IN AAAA 2a02:8010:61d5:42::101
 dns-02              IN A 192.168.42.102
