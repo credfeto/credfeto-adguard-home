@@ -25,6 +25,7 @@ Please ADD ALL Changes to the UNRELEASED SECTION and not a specific release
 - Added `audio-bookshelf.lan` (`192.168.150.16`) to `zones/lan.db`.
 - Added `dev-cache-01.lan` (`192.168.150.100`) and `dev-cache-02.lan` (`192.168.150.101`) to `zones/lan.db`.
 - Added `development.lan` (`192.168.150.176`) to `zones/lan.db`.
+- Added `immich.lan` (`192.168.150.154`) to `zones/lan.db`.
 ### Fixed
 - Fixed typo in `zones/lan.db`: `docker-tegistry` renamed to `docker-registry` (`192.168.150.202`).
 - Corrected `monitoring.lan` IP in `zones/lan.db` from `192.168.150.135` to `192.168.150.134`.
