@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented in this file.
 
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
 <!--
 Please ADD ALL Changes to the UNRELEASED SECTION and not a specific release
 -->
@@ -22,6 +25,7 @@ Please ADD ALL Changes to the UNRELEASED SECTION and not a specific release
 - Widened the allowed IPv6 firewall network from 2a02:8010:61d5::/64 to 2a02:8010:61d5::/48 to cover all subnets, not just subnet 0
 - Switched Technitium recursion ACL from AllowOnlyForPrivateNetworks to an explicit network ACL including 2a02:8010:61d5::/48, since public IPv6 addresses are never classified as private
 - Renumbered dns-01 through dns-04 from 192.168.42.251-254 to 192.168.42.101-104, added dns-05 (192.168.42.105), and added AAAA records (2a02:8010:61d5:42::101-105) for all five in lan.db and dns.lan.db
+### Deprecated
 ### Removed
 ### Deployment Changes
 <!--
