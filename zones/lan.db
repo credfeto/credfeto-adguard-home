@@ -1,7 +1,7 @@
 $ORIGIN lan.
 $TTL 3600
 @ IN SOA dns-server. admin. (
-    6       ; serial
+    7       ; serial
     900     ; refresh
     300     ; retry
     604800  ; expire
@@ -41,3 +41,4 @@ keys                IN A 192.168.150.220
 docker-tegistry     IN A 192.168.150.202
 homepage            IN A 192.168.150.150
 gickup              IN A 192.168.150.13
+audio-bookshelf     IN A 192.168.150.16
