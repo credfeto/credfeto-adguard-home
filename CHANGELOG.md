@@ -23,6 +23,7 @@ Please ADD ALL Changes to the UNRELEASED SECTION and not a specific release
 - Added `gickup.lan` (`192.168.150.13`) to `zones/lan.db`.
 - Added `dns-06.lan` / `dns-06.dns.lan` (`192.168.42.106`, `2a02:8010:61d5:42::106`) to `zones/lan.db` and `zones/dns.lan.db`.
 - Added `audio-bookshelf.lan` (`192.168.150.16`) to `zones/lan.db`.
+- Added `dev-cache-01.lan` (`192.168.150.100`) and `dev-cache-02.lan` (`192.168.150.101`) to `zones/lan.db`.
 ### Fixed
 ### Changed
 - Removed the legacy repository `hosts` file workflow; zone files in `zones/` are now the source of truth.
