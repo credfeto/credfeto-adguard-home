@@ -19,6 +19,8 @@ Please ADD ALL Changes to the UNRELEASED SECTION and not a specific release
 - DNS record for keys.markridgwell.com pointing to proxy on 192.168.150.250
 - DNS record for cctv.markridgwell.com pointing to proxy on 192.168.150.250
 - Support IPv6 (private ranges and 2a02:8010:61d5::/64) in firewall rules
+- Added `homepage.lan` (`192.168.150.150`) to `zones/lan.db`.
+- Added `gickup.lan` (`192.168.150.13`) to `zones/lan.db`.
 ### Fixed
 ### Changed
 - Removed the legacy repository `hosts` file workflow; zone files in `zones/` are now the source of truth.
