@@ -1,7 +1,7 @@
 $ORIGIN lan.
 $TTL 3600
 @ IN SOA dns-server. admin. (
-    10      ; serial
+    11      ; serial
     900     ; refresh
     300     ; retry
     604800  ; expire
@@ -35,6 +35,7 @@ nanoclaw            IN A 192.168.150.23
 linux-cache-01      IN A 192.168.150.200
 linux-cache-02      IN A 192.168.150.201
 monitoring          IN A 192.168.150.134
+development         IN A 192.168.150.176
 arch-vm-test        IN A 192.168.150.177
 proxy               IN A 192.168.150.250
 keys                IN A 192.168.150.220
