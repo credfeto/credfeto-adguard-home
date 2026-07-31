@@ -26,6 +26,7 @@ Please ADD ALL Changes to the UNRELEASED SECTION and not a specific release
 - Added `dev-cache-01.lan` (`192.168.150.100`) and `dev-cache-02.lan` (`192.168.150.101`) to `zones/lan.db`.
 ### Fixed
 - Fixed typo in `zones/lan.db`: `docker-tegistry` renamed to `docker-registry` (`192.168.150.202`).
+- Corrected `monitoring.lan` IP in `zones/lan.db` from `192.168.150.135` to `192.168.150.134`.
 ### Changed
 - Removed the legacy repository `hosts` file workflow; zone files in `zones/` are now the source of truth.
 - Widened the allowed IPv6 firewall network from 2a02:8010:61d5::/64 to 2a02:8010:61d5::/48 to cover all subnets, not just subnet 0
