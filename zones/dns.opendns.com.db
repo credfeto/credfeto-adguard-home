@@ -1,0 +1,16 @@
+$ORIGIN dns.opendns.com.
+$TTL 3600
+@ IN SOA dns-server. admin. (
+    1       ; serial
+    900     ; refresh
+    300     ; retry
+    604800  ; expire
+    300     ; minimum TTL
+)
+@ IN NS dns-server.
+
+; OpenDNS public DNS
+@ IN A 208.67.222.222
+@ IN A 208.67.220.220
+@ IN AAAA 2620:119:35::35
+@ IN AAAA 2620:119:53::53

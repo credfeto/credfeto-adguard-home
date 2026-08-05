@@ -1,0 +1,16 @@
+$ORIGIN dns.adguard-dns.com.
+$TTL 3600
+@ IN SOA dns-server. admin. (
+    1       ; serial
+    900     ; refresh
+    300     ; retry
+    604800  ; expire
+    300     ; minimum TTL
+)
+@ IN NS dns-server.
+
+; AdGuard public DNS
+@ IN A 94.140.14.14
+@ IN A 94.140.15.15
+@ IN AAAA 2a10:50c0::ad1:ff
+@ IN AAAA 2a10:50c0::ad2:ff
