@@ -1,0 +1,16 @@
+$ORIGIN fcf757.dns.nextdns.io.
+$TTL 3600
+@ IN SOA dns-server. admin. (
+    1       ; serial
+    900     ; refresh
+    300     ; retry
+    604800  ; expire
+    300     ; minimum TTL
+)
+@ IN NS dns-server.
+
+; NextDNS (config fcf757)
+@ IN A 45.90.28.0
+@ IN A 45.90.30.0
+@ IN AAAA 2a07:a8c0::
+@ IN AAAA 2a07:a8c1::

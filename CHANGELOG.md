@@ -32,6 +32,7 @@ Please ADD ALL Changes to the UNRELEASED SECTION and not a specific release
 - Added IPv6 AAAA records for public DNS resolvers: 1dot1dot1dot1.cloudflare-dns.com, mozilla.cloudflare-dns.com, security.cloudflare-dns.com, dns.google, and dns.quad9.net.
 - Added public DNS resolver zones for Cloudflare Family (family.cloudflare-dns.com), AdGuard DNS (dns.adguard-dns.com), and OpenDNS (dns.opendns.com), each with IPv4 A and IPv6 AAAA records.
 - Added dns-06.markridgwell.com zone (192.168.150.250).
+- Added fcf757.dns.nextdns.io zone (NextDNS) with A and AAAA records.
 ### Fixed
 - Fixed typo in `zones/lan.db`: `docker-tegistry` renamed to `docker-registry` (`192.168.150.202`).
 - Corrected `monitoring.lan` IP in `zones/lan.db` from `192.168.150.135` to `192.168.150.134`.
