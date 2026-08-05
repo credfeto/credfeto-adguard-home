@@ -1,7 +1,7 @@
 $ORIGIN dns.quad9.net.
 $TTL 3600
 @ IN SOA dns-server. admin. (
-    1       ; serial
+    2       ; serial
     900     ; refresh
     300     ; retry
     604800  ; expire
@@ -12,3 +12,5 @@ $TTL 3600
 ; Quad9 DNS
 @ IN A 9.9.9.9
 @ IN A 149.112.112.112
+@ IN AAAA 2620:fe::fe
+@ IN AAAA 2620:fe::9

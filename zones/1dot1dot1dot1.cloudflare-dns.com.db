@@ -1,7 +1,7 @@
 $ORIGIN 1dot1dot1dot1.cloudflare-dns.com.
 $TTL 3600
 @ IN SOA dns-server. admin. (
-    1       ; serial
+    2       ; serial
     900     ; refresh
     300     ; retry
     604800  ; expire
@@ -12,3 +12,5 @@ $TTL 3600
 ; Cloudflare public DNS
 @ IN A 1.1.1.1
 @ IN A 1.0.0.1
+@ IN AAAA 2606:4700:4700::1111
+@ IN AAAA 2606:4700:4700::1001
