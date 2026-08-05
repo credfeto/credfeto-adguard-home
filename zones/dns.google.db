@@ -1,7 +1,7 @@
 $ORIGIN dns.google.
 $TTL 3600
 @ IN SOA dns-server. admin. (
-    1       ; serial
+    2       ; serial
     900     ; refresh
     300     ; retry
     604800  ; expire
@@ -12,3 +12,5 @@ $TTL 3600
 ; Google public DNS
 @ IN A 8.8.8.8
 @ IN A 8.8.4.4
+@ IN AAAA 2001:4860:4860::8888
+@ IN AAAA 2001:4860:4860::8844
