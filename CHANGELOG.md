@@ -34,6 +34,7 @@ Please ADD ALL Changes to the UNRELEASED SECTION and not a specific release
 - Added dns-06.markridgwell.com zone (192.168.150.250).
 - Added fcf757.dns.nextdns.io zone (NextDNS) with A and AAAA records.
 - Added be6f94.dns.nextdns.io zone (NextDNS) with A and AAAA records.
+- Added AAAA records (2a02:8010:61d5:150::250) for proxy.lan and all 36 services fronted by it, alongside their existing A records.
 ### Fixed
 - Fixed typo in `zones/lan.db`: `docker-tegistry` renamed to `docker-registry` (`192.168.150.202`).
 - Corrected `monitoring.lan` IP in `zones/lan.db` from `192.168.150.135` to `192.168.150.134`.
