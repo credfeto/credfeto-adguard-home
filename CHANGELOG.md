@@ -35,6 +35,7 @@ Please ADD ALL Changes to the UNRELEASED SECTION and not a specific release
 - Added fcf757.dns.nextdns.io zone (NextDNS) with A and AAAA records.
 - Added be6f94.dns.nextdns.io zone (NextDNS) with A and AAAA records.
 - Added AAAA records (2a02:8010:61d5:150::250) for proxy.lan and all 36 services fronted by it, alongside their existing A records.
+- Added `stairs-02.lan` (`192.168.10.3`) and `office.lan` (`192.168.10.4`) to `zones/lan.db` and `zones/network.lan.db`.
 ### Fixed
 - Fixed typo in `zones/lan.db`: `docker-tegistry` renamed to `docker-registry` (`192.168.150.202`).
 - Corrected `monitoring.lan` IP in `zones/lan.db` from `192.168.150.135` to `192.168.150.134`.
