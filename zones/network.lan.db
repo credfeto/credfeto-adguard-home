@@ -1,7 +1,7 @@
 $ORIGIN network.lan.
 $TTL 3600
 @ IN SOA dns-server. admin. (
-    3       ; serial
+    4       ; serial
     900     ; refresh
     300     ; retry
     604800  ; expire
@@ -18,3 +18,4 @@ ap-office  IN A 192.168.10.7
 ap-bedroom IN A 192.168.10.8
 ap-stairs  IN A 192.168.10.6
 ap-garden  IN A 192.168.10.9
+netgear-proxmox-cluster IN A 192.168.10.10
