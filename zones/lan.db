@@ -1,7 +1,7 @@
 $ORIGIN lan.
 $TTL 3600
 @ IN SOA dns-server. admin. (
-    18      ; serial
+    19      ; serial
     900     ; refresh
     300     ; retry
     604800  ; expire
@@ -14,6 +14,10 @@ stairs-01           IN A 192.168.10.2
 stairs-02           IN A 192.168.10.3
 office              IN A 192.168.10.4
 bedroom             IN A 192.168.10.5
+ap-office           IN A 192.168.10.7
+ap-bedroom          IN A 192.168.10.8
+ap-stairs           IN A 192.168.10.6
+ap-garden           IN A 192.168.10.9
 dns-01              IN A 192.168.42.101
 dns-01              IN AAAA 2a02:8010:61d5:42::101
 dns-02              IN A 192.168.42.102
