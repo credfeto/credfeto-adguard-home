@@ -41,6 +41,10 @@ Please ADD ALL Changes to the UNRELEASED SECTION and not a specific release
 - Added `ap-bedroom.network.lan` (`192.168.10.8`) to `zones/network.lan.db` - Zyxel-Bedroom wireless mesh access point.
 - Added `ap-stairs.network.lan` (`192.168.10.6`) to `zones/network.lan.db` - Zyxel-Stairs wireless mesh access point.
 - Added `ap-garden.network.lan` (`192.168.10.9`) to `zones/network.lan.db` - Zyxel-Garden wireless mesh access point.
+- Added `ap-office.lan` (`192.168.10.7`) to `zones/lan.db` - Zyxel-Office wireless mesh access point.
+- Added `ap-bedroom.lan` (`192.168.10.8`) to `zones/lan.db` - Zyxel-Bedroom wireless mesh access point.
+- Added `ap-stairs.lan` (`192.168.10.6`) to `zones/lan.db` - Zyxel-Stairs wireless mesh access point.
+- Added `ap-garden.lan` (`192.168.10.9`) to `zones/lan.db` - Zyxel-Garden wireless mesh access point.
 ### Fixed
 - Fixed typo in `zones/lan.db`: `docker-tegistry` renamed to `docker-registry` (`192.168.150.202`).
 - Corrected `monitoring.lan` IP in `zones/lan.db` from `192.168.150.135` to `192.168.150.134`.
