@@ -1,7 +1,7 @@
 $ORIGIN lan.
 $TTL 3600
 @ IN SOA dns-server. admin. (
-    19      ; serial
+    20      ; serial
     900     ; refresh
     300     ; retry
     604800  ; expire
@@ -58,3 +58,4 @@ audio-bookshelf     IN A 192.168.150.16
 dev-cache-01        IN A 192.168.150.100
 dev-cache-02        IN A 192.168.150.101
 immich              IN A 192.168.150.154
+netgear-proxmox-cluster IN A 192.168.10.10

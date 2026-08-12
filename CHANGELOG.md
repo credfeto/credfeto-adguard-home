@@ -45,6 +45,7 @@ Please ADD ALL Changes to the UNRELEASED SECTION and not a specific release
 - Added `ap-bedroom.lan` (`192.168.10.8`) to `zones/lan.db` - Zyxel-Bedroom wireless mesh access point.
 - Added `ap-stairs.lan` (`192.168.10.6`) to `zones/lan.db` - Zyxel-Stairs wireless mesh access point.
 - Added `ap-garden.lan` (`192.168.10.9`) to `zones/lan.db` - Zyxel-Garden wireless mesh access point.
+- Added `netgear-proxmox-cluster.network.lan` and `netgear-proxmox-cluster.lan` (`192.168.10.10`) to `zones/network.lan.db` and `zones/lan.db` - NETGEAR GS108Ev3 switch (serial 3UHD1B540039A), the main switch for the Proxmox cluster, on a new DHCP reservation.
 ### Fixed
 - Fixed typo in `zones/lan.db`: `docker-tegistry` renamed to `docker-registry` (`192.168.150.202`).
 - Corrected `monitoring.lan` IP in `zones/lan.db` from `192.168.150.135` to `192.168.150.134`.
