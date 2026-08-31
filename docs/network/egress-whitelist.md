@@ -72,7 +72,7 @@ Snapshot only — a longer log review is needed before finalising the list.
 | --- | --- | --- | --- | --- |
 | 192.168.42.101 (dns-01) | 20.26.156.215 | 443 | AS8075 Microsoft (London) | Guessing NuGet.org (`api.nuget.org` is Azure-hosted) or another MS-hosted endpoint pulled in by `ansible-pull`'s playbook — **needs confirming**, not obviously required by this repo alone |
 | 2a02:8010:61d5:42::/64 (a DNS-VLAN host, privacy address) | 2a00:11c0:8:4::9 | 443 | AS42473 Anexia (London) | Likely `abp.markridgwell.com` (your own blocklist host) — **confirm** |
-| 192.168.42.105, .103 | 45.90.30.1 / 45.90.28.1 | 53 (udp) | NextDNS anycast | A NextDNS-forwarded zone exists (`be6f94.dns.nextdns.io`, `fcf757.dns.nextdns.io`) — looks like split/conditional forwarding for specific zones on some nodes only, not all six. **Confirm which nodes/zones intentionally use NextDNS vs the Cloudflare DoH default.** |
+| 192.168.42.105, .103 | 45.90.30.1 / 45.90.28.1 | 53 (udp) | NextDNS anycast | Real forwarding to the configured NextDNS profile (`be6f94`) — confirmed as the only active NextDNS forwarder (`fcf757.dns.nextdns.io.db` is grouped with the anti-DoH-bypass block zones — same size/mtime as `dns.google.db`/`dns.opendns.com.db`/`dns.quad9.net.db` — not a live forwarder). **Confirm why only .103/.105 use this vs the Cloudflare DoH default on .101.** |
 | 192.168.42.102 | (NAT'd to 8.8.8.8) | 53 | Google | Saw a NAT translation annotation on OPNsense implying outbound port-53 on this host gets redirected — **check OPNsense NAT rules directly**, don't assume this is intentional egress to Google |
 
 Also observed: every DNS node has an established TCP session to
@@ -108,8 +108,9 @@ host).
 
 1. Should the block-list URL (`abp.markridgwell.com`) be locked to a
    specific IP, or does it move (e.g. behind a CDN/dynamic DNS)?
-2. Is NextDNS forwarding (`be6f94`, `fcf757`) intentional per-node config,
-   or leftover/inconsistent? Which nodes should use it?
+2. Is NextDNS forwarding (`be6f94`) on .103/.105 intentional per-node
+   config, or leftover/inconsistent versus the Cloudflare DoH default on
+   .101? Which nodes should use it?
 3. What is the 8.8.8.8 NAT redirect on dns-02 (`.102`) — an existing
    OPNsense rule forcing plain DNS out to Google? Intentional?
 4. What does `credfeto-setup-arch-vm`'s `site.yml` actually reach
