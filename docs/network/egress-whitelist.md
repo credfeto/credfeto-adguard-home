@@ -13,12 +13,7 @@ rules. Needs review before anything is enforced.
 
 | Host | LAN IPv4 | LAN IPv6 | Role |
 | --- | --- | --- | --- |
-| dns-01 | 192.168.42.101 | 2a02:8010:61d5:42::101 | Technitium DNS server (this repo) |
-| dns-02 | 192.168.42.102 | 2a02:8010:61d5:42::102 | Same role |
-| dns-03 | 192.168.42.103 | 2a02:8010:61d5:42::103 | Same role |
-| dns-04 | 192.168.42.104 | 2a02:8010:61d5:42::104 | Same role |
-| dns-05 | 192.168.42.105 | 2a02:8010:61d5:42::105 | Same role |
-| dns-06 | 192.168.42.106 | 2a02:8010:61d5:42::106 | Same role |
+| dns-01..dns-06 | 192.168.42.101-106 | 2a02:8010:61d5:42::101-106 | Technitium DNS server (this repo), six nodes |
 | OPNsense | 192.168.10.1 (mgmt), 192.168.42.1 (DNS VLAN gateway) | — | Firewall/router |
 
 IPv6 addresses inferred from dns-01's `/etc/resolv.conf` nameserver list by
