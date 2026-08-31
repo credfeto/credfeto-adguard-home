@@ -32,7 +32,11 @@ deliberately rotated so adjacent lines are *not* the same host.
 From `docker-compose.yml`:
 
 - `DNS_SERVER_FORWARDERS=https://security.cloudflare-dns.com/dns-query`
-  (DoH, HTTPS/443) — recursive resolution forwarder.
+  (DoH, HTTPS/443) — recursive resolution forwarder. **Conflicts with your
+  decision below that the only sanctioned forwarder is NextDNS
+  `dns.nextdns.io/be6f94`** — this line in `docker-compose.yml` needs
+  changing to match once you're ready for that (not done as part of this
+  notes pass).
 - `DNS_SERVER_BLOCK_LIST_URLS` — hourly-ish fetch of blocklists over
   HTTPS/443 from:
   - `abp.markridgwell.com` (own domain — confirm hosting IP before locking
@@ -72,7 +76,7 @@ Snapshot only — a longer log review is needed before finalising the list.
 | --- | --- | --- | --- | --- |
 | 192.168.42.101 (dns-01) | 20.26.156.215 | 443 | AS8075 Microsoft (London) | Guessing NuGet.org (`api.nuget.org` is Azure-hosted) or another MS-hosted endpoint pulled in by `ansible-pull`'s playbook — **needs confirming**, not obviously required by this repo alone |
 | 2a02:8010:61d5:42::/64 (a DNS-VLAN host, privacy address) | 2a00:11c0:8:4::9 | 443 | AS42473 Anexia (London) | Likely `abp.markridgwell.com` (your own blocklist host) — **confirm** |
-| 192.168.42.105, .103 | 45.90.30.1 / 45.90.28.1 | 53 (udp) | NextDNS anycast | Real forwarding to the configured NextDNS profile (`be6f94`) — confirmed as the only active NextDNS forwarder (`fcf757.dns.nextdns.io.db` is grouped with the anti-DoH-bypass block zones — same size/mtime as `dns.google.db`/`dns.opendns.com.db`/`dns.quad9.net.db` — not a live forwarder). **Confirm why only .103/.105 use this vs the Cloudflare DoH default on .101.** |
+| 192.168.42.105, .103 | 45.90.30.1 / 45.90.28.1 | 53 (udp) | NextDNS anycast | This is your one sanctioned forwarder (`dns.nextdns.io/be6f94`) — but it's going out as **plain UDP/53, not DoH/443**. `fcf757.dns.nextdns.io.db` is grouped with the anti-DoH-bypass block zones (same size/mtime as `dns.google.db`/`dns.opendns.com.db`/`dns.quad9.net.db`), not a second forwarder. **Two things to fix, not just confirm: (a) get all six nodes forwarding to `be6f94` instead of only .103/.105 with .101 on Cloudflare, (b) get the protocol actually set to DoH so it's HTTPS/443, matching the `https://dns.nextdns.io/be6f94/...` config rather than falling back to plain DNS/53.** |
 | 192.168.42.102 | (NAT'd to 8.8.8.8) | 53 | Google | Saw a NAT translation annotation on OPNsense implying outbound port-53 on this host gets redirected — **check OPNsense NAT rules directly**, don't assume this is intentional egress to Google |
 
 Also observed: every DNS node has an established TCP session to
@@ -108,9 +112,13 @@ host).
 
 1. Should the block-list URL (`abp.markridgwell.com`) be locked to a
    specific IP, or does it move (e.g. behind a CDN/dynamic DNS)?
-2. Is NextDNS forwarding (`be6f94`) on .103/.105 intentional per-node
-   config, or leftover/inconsistent versus the Cloudflare DoH default on
-   .101? Which nodes should use it?
+2. **Decided:** the only sanctioned forwarder is NextDNS
+   `https://dns.nextdns.io/be6f94/...` (DoH) — no other forwarder,
+   including the Cloudflare one currently in `docker-compose.yml`. Two
+   follow-ups this creates: get all six nodes onto it consistently
+   (currently only .103/.105 use it, .101 uses Cloudflare, .102/.104/.106
+   not yet checked), and get it actually running as DoH/443 rather than
+   the plain UDP/53 seen live for .103/.105.
 3. What is the 8.8.8.8 NAT redirect on dns-02 (`.102`) — an existing
    OPNsense rule forcing plain DNS out to Google? Intentional?
 4. What does `credfeto-setup-arch-vm`'s `site.yml` actually reach
@@ -175,12 +183,16 @@ for ip6 in 2a02:8010:61d5:42::101 2a02:8010:61d5:42::102 2a02:8010:61d5:42::103 
     allow_egress_ipv6 "${ip6}/128" 53 udp
 done
 
-# --- Confirmed: Cloudflare "security" DoH forwarder (443/tcp) ---
-# security.cloudflare-dns.com's documented fixed anycast addresses.
-allow_egress_ipv4 "1.1.1.2/32" 443 tcp
-allow_egress_ipv4 "1.0.0.2/32" 443 tcp
-allow_egress_ipv6 "2606:4700:4700::1112/128" 443 tcp
-allow_egress_ipv6 "2606:4700:4700::1002/128" 443 tcp
+# --- Decided: NextDNS (be6f94) is the only sanctioned forwarder, DoH/443 ---
+# Anycast addresses seen live are 45.90.28.1 / 45.90.30.1, but those were
+# observed on plain UDP/53, not confirmed as NextDNS's actual DoH endpoint
+# IPs for dns.nextdns.io - re-verify before relying on this once the
+# forwarder is switched to DoH on every node.
+allow_egress_ipv4 "45.90.28.0/24" 443 tcp
+allow_egress_ipv4 "45.90.30.0/24" 443 tcp
+
+# Cloudflare's security DoH forwarder is NOT wanted (see "Open questions")
+# - left out entirely, do not add back once docker-compose.yml is fixed.
 
 # --- Confirmed: raw.githubusercontent.com blocklists (443/tcp) ---
 # GitHub's documented Fastly range for raw content.
@@ -200,7 +212,6 @@ allow_egress_ipv4 "192.168.42.1/32" 123 udp
 #                                  watchtower instead of whitelisting it
 # 20.26.156.215 (Microsoft)     - purpose not yet identified
 # 2a00:11c0:8:4::9 (Anexia)     - purpose not yet identified
-# NextDNS 45.90.28.0/24, 45.90.30.0/24 (53/udp) - only if confirmed intentional
 # 192.168.90.254:1433 (MSSQL)   - purpose not yet identified
 
 firewall-cmd --reload
