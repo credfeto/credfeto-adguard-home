@@ -72,7 +72,7 @@ Snapshot only — a longer log review is needed before finalising the list.
 
 | Source | Destination | Port | Owner (from IP lookup) | Likely purpose |
 | --- | --- | --- | --- | --- |
-| 192.168.42.101 (dns-01) | 20.26.156.215 | 443 | AS8075 Microsoft (London) | Guessing NuGet.org (`api.nuget.org` is Azure-hosted) or another MS-hosted endpoint pulled in by `ansible-pull`'s playbook — **needs confirming**, not obviously required by this repo alone |
+| 192.168.42.101 (dns-01) | 20.26.156.215 | 443 | AS8075 Microsoft (London) | Confirmed as **GitHub's API** (`api.github.com` resolves to `20.26.156.210`, same pool) — not NuGet.org as first guessed, and not Technitium's own app-update mechanism either (that's `download.technitium.com`, DigitalOcean-hosted, unrelated IP). Two candidate callers, not yet narrowed down further: `ansible-pull`'s git-over-HTTPS operations against `github.com`, or Technitium's own `dnsServerEnableCheckForUpdate` release-version check. |
 | 2a02:8010:61d5:42::/64 (a DNS-VLAN host, privacy address) | 2a00:11c0:8:4::9 | 443 | AS42473 Anexia (London) | Likely `abp.markridgwell.com` (your own blocklist host) — **confirm** |
 | 192.168.42.105, .103 | 45.90.30.1 / 45.90.28.1 | 53 (udp) | NextDNS anycast | Verified via the Technitium API on all six nodes: every node's forwarder is correctly `https://dns.nextdns.io/be6f94/DNS-0X` with `forwarderProtocol: Https` — nothing is misconfigured. This plain UDP/53 traffic is almost certainly Technitium's own bootstrap resolution of the forwarder's hostname (`dns.nextdns.io` itself resolves within NextDNS's own anycast range), not the forwarder channel, which goes out separately over 443. `fcf757.dns.nextdns.io.db` is grouped with the anti-DoH-bypass block zones (same size/mtime as `dns.google.db`/`dns.opendns.com.db`/`dns.quad9.net.db`), not a second forwarder. No fix needed here. |
 | 192.168.42.102 | (NAT'd to 8.8.8.8) | 53 | Google | Saw a NAT translation annotation on OPNsense implying outbound port-53 on this host gets redirected — **check OPNsense NAT rules directly**, don't assume this is intentional egress to Google |
@@ -80,9 +80,11 @@ Snapshot only — a longer log review is needed before finalising the list.
 Also observed: every DNS node has an established TCP session to
 `192.168.90.254:1433` (MSSQL) — that's cross-VLAN, not internet egress, but
 still needs an explicit firewall allow if OPNsense enforces inter-VLAN
-rules too. Purpose not yet confirmed (Technitium doesn't use SQL Server
-natively — could be logging/reporting or an unrelated service on the same
-host).
+rules too. **Confirmed via the API**: Technitium's "Query Logs (SQL
+Server)" app is installed (`/api/apps/list` on dns-01) — this is it, not
+an unrelated service. Still to confirm: whether this should keep running
+on every node vs. consolidating, and whether the SQL Server itself is
+locked down to only accept from the DNS VLAN.
 
 ## Other likely requirements not yet seen live
 
@@ -120,8 +122,14 @@ host).
 5. Is Watchtower still wanted at all, given it needs open egress to a
    container registry on every node, every hour? (Not asking you to
    decide now — just flagging it drives one of the wider allow rules.)
-6. What is `192.168.90.254:1433` (MSSQL) for, and does it need to keep
-   being reachable from every DNS node?
+6. ~~What is `192.168.90.254:1433` (MSSQL) for?~~ **Resolved:** Technitium's
+   own "Query Logs (SQL Server)" app, confirmed installed via the API.
+   Still open: does it need to stay reachable from every node, or should
+   logging be consolidated?
+7. What exactly calls `api.github.com` (`20.26.156.215`/`.210`) — confirmed
+   as GitHub's API via DNS resolution, but not yet narrowed down to
+   `ansible-pull`'s git operations vs. Technitium's own
+   `dnsServerEnableCheckForUpdate` release check (or both).
 
 ## Suggested `firewalld` rules (host-level, draft — not applied)
 
@@ -201,14 +209,17 @@ allow_egress_ipv4 "192.168.42.1/32" 123 udp
 
 # --- TBD, needs confirming before enabling (see "Open questions") ---
 # abp.markridgwell.com          - own domain, pin its real IP first
-# github.com (ansible-pull)     - GitHub's IP ranges are published but
-#                                  change; needs an ipset + refresh job,
-#                                  not a static rule
+# github.com / api.github.com (ansible-pull and/or Technitium's own
+#                                update-check) - GitHub's IP ranges are
+#                                published but change; needs an ipset +
+#                                refresh job, not a static rule
 # Docker Hub (watchtower)       - wide/CDN-fronted; consider dropping
 #                                  watchtower instead of whitelisting it
-# 20.26.156.215 (Microsoft)     - purpose not yet identified
 # 2a00:11c0:8:4::9 (Anexia)     - purpose not yet identified
-# 192.168.90.254:1433 (MSSQL)   - purpose not yet identified
+# 192.168.90.254:1433 (MSSQL)   - purpose confirmed: Technitium's own
+#                                  "Query Logs (SQL Server)" app is
+#                                  installed - still need to confirm it
+#                                  should be reachable from every node
 
 firewall-cmd --reload
 ```
