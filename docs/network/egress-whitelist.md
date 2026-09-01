@@ -44,9 +44,14 @@ From `docker-compose.yml`:
     separate pin needed.
   - `raw.githubusercontent.com` (GitHub/Fastly, hagezi blocklists)
 - `watchtower` — polls for image updates every hour
-  (`WATCHTOWER_POLL_INTERVAL=3600`) against the container registry the
-  image was pulled from: `docker.io` / `registry-1.docker.io` /
-  `index.docker.io` (HTTPS/443).
+  (`WATCHTOWER_POLL_INTERVAL=3600`). **Confirmed not direct-to-internet:**
+  Docker's daemon config (`/etc/docker/daemon.json`) sets
+  `registry-mirrors: ["https://docker-cache.markridgwell.com"]`, which
+  resolves to `192.168.150.250` — an internal cache/proxy host. Watchtower
+  pulls through the Docker daemon/API, so it inherits this automatically;
+  it only needs to reach that internal host, not Docker Hub directly.
+  (Decided: keeping Watchtower — this makes that easy, no public Docker
+  Hub range needed.)
 
 From systemd units on the host (`ansible-pull.service` /
 `.timer`, runs hourly):
@@ -110,13 +115,16 @@ locked down to only accept from the DNS VLAN.
 - `firewalld` is also running locally on dns-01 (host-level firewall, in
   front of OPNsense) — its own egress rules should be checked/aligned too,
   otherwise the two could disagree.
-- `pacman`/AUR/dotnet/npm/docker-registry zone entries in `zones/` (e.g.
-  `pacman.markridgwell.com`, `aur.markridgwell.com`, `dotnet.markridgwell.com`,
-  `npm.markridgwell.com`, `docker-cache.markridgwell.com`) suggest package
-  installs are meant to go through internal caching proxies rather than
-  external mirrors directly — if so, egress for those should be internal
-  only and NOT need whitelisting externally. Needs confirming against
-  what `ansible-pull`'s playbook actually configures on these hosts.
+- **Confirmed:** `pacman.markridgwell.com`, `aur.markridgwell.com`,
+  `dotnet.markridgwell.com`, `npm.markridgwell.com`,
+  `docker-cache.markridgwell.com`, `docker-registry.markridgwell.com` and
+  `api-nuget.markridgwell.com` all resolve to the same internal host,
+  `192.168.150.250` — a single reverse-proxy/cache fronting every package
+  source. Egress for all of these is internal-only from the DNS boxes'
+  point of view; no external whitelisting needed for package installs.
+  Still need to confirm `credfeto-setup-arch-vm`'s playbook actually uses
+  these internal names rather than the real upstreams directly (see open
+  question below), but the DNS-server-side answer looks settled.
 
 ## Open questions before drafting actual firewall rules
 
@@ -132,12 +140,16 @@ locked down to only accept from the DNS VLAN.
    redirect that catches a client on another VLAN hardcoded to `8.8.8.8`
    and sends it to dns-02 instead, so it never reaches Google. Not egress,
    no action needed.
-4. What does `credfeto-setup-arch-vm`'s `site.yml` actually reach
-   (mirrors, package sources)? Needs its own audit.
-5. ~~Is Watchtower still wanted?~~ **Decided: yes, keep it.** Still needs
-   a real allow rule for Docker Hub (`registry-1.docker.io` /
-   `index.docker.io` / `docker.io`) — wide/CDN-fronted, same
-   ipset-or-accept-a-published-range problem as GitHub, not resolved yet.
+4. Mostly resolved: package-mirror hostnames all point at the internal
+   `192.168.150.250` proxy (see above), so `credfeto-setup-arch-vm`'s
+   egress footprint for those is internal-only from the DNS boxes' side.
+   Still worth reading the playbook to confirm it actually uses these
+   internal names rather than hitting real upstreams directly, but no
+   longer expected to add public destinations to this list.
+5. ~~Is Watchtower still wanted?~~ **Decided: yes, keep it — and resolved:**
+   it pulls through the Docker daemon's `registry-mirrors` setting
+   (`docker-cache.markridgwell.com` -> `192.168.150.250`, internal), so it
+   never needs direct Docker Hub egress. No public range needed after all.
 6. ~~What is `192.168.90.254:1433` (MSSQL) for?~~ **Resolved:** Technitium's
    own "Query Logs (SQL Server)" app, confirmed installed via the API.
    Still open: does it need to stay reachable from every node, or should
@@ -225,19 +237,23 @@ allow_egress_ipv6 "2606:50c0::/32" 443 tcp
 # confirm OPNsense is actually serving NTP on the DNS VLAN before relying on this.
 allow_egress_ipv4 "192.168.42.1/32" 123 udp
 
+# --- Confirmed: internal package/registry cache proxy (192.168.150.250) ---
+# Fronts docker-cache, docker-registry, pacman, aur, dotnet, npm and
+# api-nuget (all confirmed to resolve here) - covers Watchtower's pulls
+# (via Docker's registry-mirrors setting) and, once confirmed, whatever
+# credfeto-setup-arch-vm restores. Cross-VLAN, not internet egress, but
+# still needs an explicit allow if OPNsense enforces inter-VLAN rules.
+allow_egress_ipv4 "192.168.150.250/32" 443 tcp
+
+# --- Confirmed: Technitium's own MSSQL query-logging app ---
+allow_egress_ipv4 "192.168.90.254/32" 1433 tcp
+
 # --- TBD, needs confirming before enabling (see "Open questions") ---
 # github.com / api.github.com (ansible-pull and/or Technitium's own
 #                                update-check) - GitHub's IP ranges are
 #                                published but change; needs an ipset +
 #                                refresh job, not a static rule
-# Docker Hub (watchtower)       - keeping watchtower (decided); still
-#                                  wide/CDN-fronted, needs an ipset +
-#                                  refresh job like github.com above
 # 2a00:11c0:8:4::9 (Anexia)     - purpose not yet identified
-# 192.168.90.254:1433 (MSSQL)   - purpose confirmed: Technitium's own
-#                                  "Query Logs (SQL Server)" app is
-#                                  installed - still need to confirm it
-#                                  should be reachable from every node
 
 firewall-cmd --reload
 ```
