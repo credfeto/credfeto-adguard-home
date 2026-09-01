@@ -1,0 +1,26 @@
+[OPTIONS]
+enable: 1
+policy_in: ACCEPT
+policy_out: DROP
+
+[IPSET dns-cluster]
+192.168.42.96/28
+2a02:8010:61d5:42::100/124
+
+[IPSET nextdns]
+45.90.28.0/24
+45.90.30.0/24
+
+[IPSET github-pages]
+185.199.108.0/22
+2606:50c0::/32
+
+[RULES]
+OUT ACCEPT -dest +dns-cluster -p tcp -dport 53 -log nolog # DNS-to-DNS sync between the six nodes
+OUT ACCEPT -dest +dns-cluster -p udp -dport 53 -log nolog # DNS-to-DNS sync between the six nodes
+OUT ACCEPT -dest +nextdns -p tcp -dport 443 -log nolog # NextDNS be6f94 forwarder, DoH
+OUT ACCEPT -dest +nextdns -p udp -dport 53 -log nolog # NextDNS bootstrap lookup of dns.nextdns.io itself
+OUT ACCEPT -dest +github-pages -p tcp -dport 443 -log nolog # raw.githubusercontent.com and abp.markridgwell.com (GitHub Pages CNAME)
+OUT ACCEPT -dest 192.168.42.1/32 -p udp -dport 123 -log nolog # NTP via OPNsense
+OUT ACCEPT -dest 192.168.150.250/32 -p tcp -dport 443 -log nolog # internal package/registry/docker-cache proxy
+OUT ACCEPT -dest 192.168.90.254/32 -p tcp -dport 1433 -log nolog # Technitium's own MSSQL query-logging app

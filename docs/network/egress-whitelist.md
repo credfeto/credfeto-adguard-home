@@ -107,6 +107,14 @@ type per node not yet checked. Treat `192.168.42.101-106` <->
 `192.168.42.101-106` on 53/tcp+udp as required between nodes until
 confirmed otherwise.
 
+For the actual rules, use a range rather than hardcoding the six
+current addresses individually — `101`-`106` is just what exists today
+(from `credfeto-setup-arch-vm`'s `network_nameserver_suffixes`), not a
+fixed set. `192.168.42.96/28` (`.96`-`.111`) and
+`2a02:8010:61d5:42::100/124` (`::100`-`::10f`) both cleanly cover the
+current six with headroom for growth, without needing a firewall
+rule change for every new node.
+
 ## Confirmed live external egress (OPNsense `pfctl -s state`, dns-01 `ss`)
 
 Snapshot only — a longer log review is needed before finalising the list.
@@ -248,15 +256,12 @@ allow_egress_ipv6() {
 }
 
 # --- Confirmed: DNS-to-DNS sync between the six nodes (53/tcp+udp) ---
-for ip4 in 192.168.42.101 192.168.42.102 192.168.42.103 192.168.42.104 192.168.42.105 192.168.42.106; do
-    allow_egress_ipv4 "${ip4}/32" 53 tcp
-    allow_egress_ipv4 "${ip4}/32" 53 udp
-done
-for ip6 in 2a02:8010:61d5:42::101 2a02:8010:61d5:42::102 2a02:8010:61d5:42::103 \
-           2a02:8010:61d5:42::104 2a02:8010:61d5:42::105 2a02:8010:61d5:42::106; do
-    allow_egress_ipv6 "${ip6}/128" 53 tcp
-    allow_egress_ipv6 "${ip6}/128" 53 udp
-done
+# Range, not individual /32s per node - .101-.106 is just what exists
+# today, not a fixed set; this covers headroom for future nodes too.
+allow_egress_ipv4 "192.168.42.96/28" 53 tcp
+allow_egress_ipv4 "192.168.42.96/28" 53 udp
+allow_egress_ipv6 "2a02:8010:61d5:42::100/124" 53 tcp
+allow_egress_ipv6 "2a02:8010:61d5:42::100/124" 53 udp
 
 # --- Confirmed: NextDNS (be6f94) is the sole forwarder, DoH/443 ---
 # Verified live via the Technitium API on all six nodes. Anycast range
