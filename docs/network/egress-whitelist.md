@@ -85,12 +85,10 @@ From systemd units on the host (`ansible-pull.service` /
   to any of these boxes, not just during ansible-pull — a live runtime
   dependency, not a periodic one.
 - `roles/telegraf/templates/telegraf.conf.j2` pushes metrics to
-  `https://metrics.markridgwell.com` every 10s — **this hostname has no
-  DNS record at all**, not even on the real public zone (`monitoring.markridgwell.com`
-  is the one that actually resolves, via Cloudflare). Looks like a
-  naming mismatch that's silently breaking metrics collection on all six
-  boxes. Separate issue from this egress audit — flagging it here since
-  it surfaced during the same pass.
+  `https://metrics.markridgwell.com` every 10s — this hostname had no DNS
+  record at all, likely a naming mismatch against `monitoring.markridgwell.com`
+  (the one that actually resolves). **Fixed:** tracked and being worked
+  on in credfeto/credfeto-monitoring#28 and credfeto/credfeto-setup-arch-vm#220.
 - Nothing in this repo calls `api.github.com` directly (only plain
   `github.com`) — doesn't explain the live `20.26.156.215` traffic seen
   earlier; strengthens the theory that it's Technitium's own
@@ -180,10 +178,8 @@ locked down to only accept from the DNS VLAN.
    untrusted key), and `github.com` itself for `credfeto.keys` (in
    addition to the git clone already listed). Also surfaced: `keys.markridgwell.com`
    is a live per-SSH-login dependency, not just an ansible-pull one; and
-   `metrics.markridgwell.com` has no DNS record anywhere (probably a
-   naming mismatch with `monitoring.markridgwell.com`) — telegraf may be
-   silently failing to push metrics on all six nodes. Separate issue,
-   flagged for you to decide on.
+   `metrics.markridgwell.com`'s missing DNS record — being fixed in
+   credfeto/credfeto-monitoring#28 and credfeto/credfeto-setup-arch-vm#220.
 5. ~~Is Watchtower still wanted?~~ **Decided: yes, keep it — and resolved:**
    it pulls through the Docker daemon's `registry-mirrors` setting
    (`docker-cache.markridgwell.com` -> `192.168.150.250`, internal), so it
