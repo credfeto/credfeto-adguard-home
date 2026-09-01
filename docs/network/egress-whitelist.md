@@ -7,7 +7,10 @@ Working notes for restricting outbound traffic from the `credfeto-dns` hosts
 
 Status: draft, built from the docker-compose config, live `pfctl -s state`
 on OPNsense, and live `ss` on `dns-01`. Not yet implemented as firewall
-rules. Needs review before anything is enforced.
+rules. **Not ready to go live** — open questions 9-11 (`github.com`,
+`cdn-mirror.chaotic.cx`, `keyserver.ubuntu.com`) are unresolved blockers,
+not just nice-to-haves; applying `policy_out: DROP` before they're
+solved breaks `ansible-pull`.
 
 ## Hosts
 
@@ -211,6 +214,31 @@ locked down to only accept from the DNS VLAN.
    **Resolved:** confirmed the "block page" setting is disabled on the
    `be6f94` profile. The block-page IP seen in the state-table snapshot
    wasn't current/ongoing behaviour.
+9. **Not resolved — blocks going live.** How should `github.com`
+   (`ansible-pull`'s git clone and `credfeto.keys` fetch, runs hourly) be
+   handled? It's CDN/Azure-fronted with no single stable CIDR — GitHub
+   publishes six core blocks via `api.github.com/meta`
+   (`192.30.252.0/22`, `185.199.108.0/22`, `140.82.112.0/20`,
+   `143.55.64.0/20`, plus IPv6) but the "web" list also includes dozens
+   of individual scattered `/32`s that change over time, so a snapshot
+   isn't reliable long-term.
+10. **Not resolved — blocks going live.** Same problem, worse, for
+    `cdn-mirror.chaotic.cx` (Chaotic AUR, runs every hourly pull once the
+    signing key is trusted): confirmed Cloudflare-fronted
+    (`2606:4700:20::ac43:472a`) — no sane static CIDR at all, Cloudflare
+    fronts millions of unrelated sites.
+11. Does `hkps://keyserver.ubuntu.com` need a permanent rule at all?
+    It's guarded by an "already trusted" check and only fires once per
+    VM's lifetime (on first provision, or after a full re-provision) —
+    likely doesn't need one if key-trust happens before lockdown is
+    applied on a fresh install, but not yet confirmed against how
+    `credfeto-setup-arch-vm` actually sequences things.
+
+For 9 and 10: a static rule doesn't work for either. Real fix is a
+resolve-and-refresh mechanism — a script that periodically re-resolves
+just these domains and keeps a dedicated firewalld `ipset` in sync (via
+a systemd timer), with the static rule pointing at the ipset rather than
+hardcoded addresses. Not yet built.
 
 ## Proxmox firewall: tried, ruled out
 
@@ -320,19 +348,11 @@ allow_egress_ipv4 "192.168.150.250/32" 443 tcp
 # --- Confirmed: Technitium's own MSSQL query-logging app ---
 allow_egress_ipv4 "192.168.90.254/32" 1433 tcp
 
-# --- TBD, needs confirming before enabling (see "Open questions") ---
-# github.com (ansible-pull's git clone and credfeto.keys fetch -
-#                                confirmed via TLS cert probe, not
-#                                Technitium, which never touches GitHub) -
-#                                GitHub's IP ranges are published but
-#                                change; needs an ipset +
-#                                refresh job, not a static rule
-# cdn-mirror.chaotic.cx         - Chaotic AUR CDN, runs every hourly pull
-#                                  once the signing key is trusted; same
-#                                  ipset-or-published-range problem
-# hkps://keyserver.ubuntu.com   - GPG keyserver, only hit when the
-#                                  Chaotic AUR key isn't already trusted -
-#                                  rare/recovery-path, lower priority
+# --- NOT YET RESOLVED, blocks going live - see open questions 9-11 ---
+# github.com, cdn-mirror.chaotic.cx: no static rule works (CDN/Cloudflare
+# -fronted) - needs the ipset+refresh mechanism, not built yet.
+# hkps://keyserver.ubuntu.com: likely doesn't need a rule at all - not
+# yet confirmed.
 
 firewall-cmd --reload
 ```
