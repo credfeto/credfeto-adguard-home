@@ -212,6 +212,23 @@ locked down to only accept from the DNS VLAN.
    `be6f94` profile. The block-page IP seen in the state-table snapshot
    wasn't current/ongoing behaviour.
 
+## Proxmox firewall: tried, ruled out
+
+Before the `firewalld` approach below, tried enforcing egress at the
+hypervisor level instead, via Proxmox's own per-VM firewall on DNS-06
+(VMID 112) — enforced outside the guest, so a compromised VM can't
+disable it. **Ruled out**: Proxmox's firewall framework has a hardcoded,
+always-on rule (`-A PVEFW-Drop -p udp --sport 53 -j DROP`, confirmed via
+`pve-firewall compile` and the official docs at
+`pve.proxmox.com/wiki/Firewall`) that drops any UDP packet with *source*
+port 53 — exactly what Technitium's own outbound recursive/bootstrap
+queries use. It's independent of the VM's own `policy_in`/`policy_out`
+and has no exposed exemption. Applying it broke DNS-06's resolution
+entirely (real outage, since reverted — see `dnyw4l3n13/proxmox`'s
+`NOTES.md`, 2026-09-01, for the full incident writeup). Proxmox's
+firewall may be fine for other, non-DNS VMs on that cluster; it's a dead
+end specifically for restricting these DNS servers' own egress.
+
 ## Suggested `firewalld` rules (host-level, draft — not applied)
 
 dns-01 runs `firewalld 2.5.1` locally, active zone `public` (default),

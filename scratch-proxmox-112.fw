@@ -1,7 +1,7 @@
 [OPTIONS]
 enable: 1
 policy_in: ACCEPT
-policy_out: DROP
+policy_out: ACCEPT
 
 [IPSET dns-cluster]
 192.168.42.96/28
