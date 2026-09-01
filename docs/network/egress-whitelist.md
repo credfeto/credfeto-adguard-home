@@ -111,7 +111,7 @@ Snapshot only — a longer log review is needed before finalising the list.
 | Source | Destination | Port | Owner (from IP lookup) | Likely purpose |
 | --- | --- | --- | --- | --- |
 | 192.168.42.101 (dns-01) | 20.26.156.215 | 443 | AS8075 Microsoft (London) | Confirmed as **GitHub's API** (`api.github.com` resolves to `20.26.156.210`, same pool) — not NuGet.org as first guessed, and not Technitium's own app-update mechanism either (that's `download.technitium.com`, DigitalOcean-hosted, unrelated IP). Two candidate callers, not yet narrowed down further: `ansible-pull`'s git-over-HTTPS operations against `github.com`, or Technitium's own `dnsServerEnableCheckForUpdate` release-version check. |
-| 2a02:8010:61d5:42::/64 (a DNS-VLAN host, privacy address) | 2a00:11c0:8:4::9 | 443 | AS42473 Anexia (London) | Identified but **not yet resolved**: TLS certificate probe (`curl --resolve` + SNI) shows `O=NextDNS Inc.; CN=blockpage.nextdns.io` — NextDNS's own block-page server. That means NextDNS's *own* blocking (Security/Parental Control categories on the `be6f94` profile, dashboard-side, separate from anything in this repo) is actively engaged — unexpected, since Technitium already does local blocking via its own blocklists. Open question: is double-blocking intended, or should NextDNS-side blocking be turned off in its dashboard? Can't trace which domain triggered it locally — Technitium's `logQueries` is `false`. |
+| 2a02:8010:61d5:42::/64 (a DNS-VLAN host, privacy address) | 2a00:11c0:8:4::9 | 443 | AS42473 Anexia (London) | TLS certificate probe shows `O=NextDNS Inc.; CN=blockpage.nextdns.io`. **Confirmed the "block page" setting is disabled on the `be6f94` profile itself**, so this isn't live/current double-blocking behaviour — the connection in the state-table snapshot is most likely stale/historic, or an unrelated one-off. Not treated as an ongoing egress requirement; drop the corresponding firewalld rule below unless it recurs. |
 | 192.168.42.105, .103 | 45.90.30.1 / 45.90.28.1 | 53 (udp) | NextDNS anycast | Verified via the Technitium API on all six nodes: every node's forwarder is correctly `https://dns.nextdns.io/be6f94/DNS-0X` with `forwarderProtocol: Https` — nothing is misconfigured. This plain UDP/53 traffic is almost certainly Technitium's own bootstrap resolution of the forwarder's hostname (`dns.nextdns.io` itself resolves within NextDNS's own anycast range), not the forwarder channel, which goes out separately over 443. `fcf757.dns.nextdns.io.db` is grouped with the anti-DoH-bypass block zones (same size/mtime as `dns.google.db`/`dns.opendns.com.db`/`dns.quad9.net.db`), not a second forwarder. No fix needed here. |
 
 Not egress, but worth recording: OPNsense's state table also showed
@@ -194,12 +194,10 @@ locked down to only accept from the DNS VLAN.
    `github.com` URLs, never the API) — Technitium's own
    `dnsServerEnableCheckForUpdate` is now the leading, effectively only
    remaining candidate.
-8. Is NextDNS's own blocking (Security/Parental Control categories on the
-   `be6f94` profile) supposed to be active alongside Technitium's local
-   blocklists? The block-page IP (`2a00:11c0:8:4::9`,
-   `blockpage.nextdns.io`) being reached live means it is engaged right
-   now — check the NextDNS dashboard for `be6f94` to confirm whether
-   that's intended, or should be turned off there.
+8. ~~Is NextDNS's own blocking active alongside Technitium's?~~
+   **Resolved:** confirmed the "block page" setting is disabled on the
+   `be6f94` profile. The block-page IP seen in the state-table snapshot
+   wasn't current/ongoing behaviour.
 
 ## Suggested `firewalld` rules (host-level, draft — not applied)
 
@@ -263,13 +261,11 @@ allow_egress_ipv4 "45.90.28.0/24" 443 tcp
 allow_egress_ipv4 "45.90.30.0/24" 443 tcp
 allow_egress_ipv4 "45.90.28.0/24" 53 udp
 allow_egress_ipv4 "45.90.30.0/24" 53 udp
-# NextDNS's block-page server (blockpage.nextdns.io) - confirmed via TLS
-# cert probe, Anexia-hosted, separate from the anycast resolver range
-# above. Included here because it's live traffic today, but see open
-# question 8: whether NextDNS-side blocking should even be enabled
-# alongside Technitium's own blocklists is still unresolved - this rule
-# may need removing depending on that answer.
-allow_egress_ipv6 "2a00:11c0:8:4::9/128" 443 tcp
+
+# NextDNS's block-page server (blockpage.nextdns.io) deliberately NOT
+# included: "block page" is confirmed disabled on the be6f94 profile, so
+# this isn't an ongoing requirement - the one connection seen live was
+# stale/unrelated, not current behaviour.
 
 # Cloudflare's security DoH forwarder is NOT wanted (superseded by
 # NextDNS, and the compose env var that named it is stale anyway) - left
