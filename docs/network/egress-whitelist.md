@@ -75,7 +75,14 @@ Snapshot only — a longer log review is needed before finalising the list.
 | 192.168.42.101 (dns-01) | 20.26.156.215 | 443 | AS8075 Microsoft (London) | Confirmed as **GitHub's API** (`api.github.com` resolves to `20.26.156.210`, same pool) — not NuGet.org as first guessed, and not Technitium's own app-update mechanism either (that's `download.technitium.com`, DigitalOcean-hosted, unrelated IP). Two candidate callers, not yet narrowed down further: `ansible-pull`'s git-over-HTTPS operations against `github.com`, or Technitium's own `dnsServerEnableCheckForUpdate` release-version check. |
 | 2a02:8010:61d5:42::/64 (a DNS-VLAN host, privacy address) | 2a00:11c0:8:4::9 | 443 | AS42473 Anexia (London) | Likely `abp.markridgwell.com` (your own blocklist host) — **confirm** |
 | 192.168.42.105, .103 | 45.90.30.1 / 45.90.28.1 | 53 (udp) | NextDNS anycast | Verified via the Technitium API on all six nodes: every node's forwarder is correctly `https://dns.nextdns.io/be6f94/DNS-0X` with `forwarderProtocol: Https` — nothing is misconfigured. This plain UDP/53 traffic is almost certainly Technitium's own bootstrap resolution of the forwarder's hostname (`dns.nextdns.io` itself resolves within NextDNS's own anycast range), not the forwarder channel, which goes out separately over 443. `fcf757.dns.nextdns.io.db` is grouped with the anti-DoH-bypass block zones (same size/mtime as `dns.google.db`/`dns.opendns.com.db`/`dns.quad9.net.db`), not a second forwarder. No fix needed here. |
-| 192.168.42.102 | (NAT'd to 8.8.8.8) | 53 | Google | Saw a NAT translation annotation on OPNsense implying outbound port-53 on this host gets redirected — **check OPNsense NAT rules directly**, don't assume this is intentional egress to Google |
+
+Not egress, but worth recording: OPNsense's state table also showed
+`192.168.42.102:53 (8.8.8.8:53) <- 192.168.80.218:...` — that's a client
+on a *different* VLAN (`192.168.80.218`) hardcoded to use `8.8.8.8`
+(Google DNS), which OPNsense transparently redirects to dns-02 instead of
+letting it actually reach Google. No traffic leaves the network here;
+it's an existing inbound NAT redirect on the firewall, unrelated to what
+the DNS servers themselves need outbound.
 
 Also observed: every DNS node has an established TCP session to
 `192.168.90.254:1433` (MSSQL) — that's cross-VLAN, not internet egress, but
@@ -115,8 +122,11 @@ locked down to only accept from the DNS VLAN.
 2. ~~Is NextDNS forwarding consistent/correct across nodes?~~ **Resolved:**
    confirmed via the API on all six nodes — every node correctly forwards
    to `https://dns.nextdns.io/be6f94/DNS-0X` over DoH. No action needed.
-3. What is the 8.8.8.8 NAT redirect on dns-02 (`.102`) — an existing
-   OPNsense rule forcing plain DNS out to Google? Intentional?
+3. ~~What is the 8.8.8.8 NAT redirect on dns-02?~~ **Resolved:** it's the
+   reverse of what it first looked like — an existing OPNsense inbound
+   redirect that catches a client on another VLAN hardcoded to `8.8.8.8`
+   and sends it to dns-02 instead, so it never reaches Google. Not egress,
+   no action needed.
 4. What does `credfeto-setup-arch-vm`'s `site.yml` actually reach
    (mirrors, package sources)? Needs its own audit.
 5. Is Watchtower still wanted at all, given it needs open egress to a
