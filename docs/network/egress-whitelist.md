@@ -134,9 +134,10 @@ locked down to only accept from the DNS VLAN.
    no action needed.
 4. What does `credfeto-setup-arch-vm`'s `site.yml` actually reach
    (mirrors, package sources)? Needs its own audit.
-5. Is Watchtower still wanted at all, given it needs open egress to a
-   container registry on every node, every hour? (Not asking you to
-   decide now — just flagging it drives one of the wider allow rules.)
+5. ~~Is Watchtower still wanted?~~ **Decided: yes, keep it.** Still needs
+   a real allow rule for Docker Hub (`registry-1.docker.io` /
+   `index.docker.io` / `docker.io`) — wide/CDN-fronted, same
+   ipset-or-accept-a-published-range problem as GitHub, not resolved yet.
 6. ~~What is `192.168.90.254:1433` (MSSQL) for?~~ **Resolved:** Technitium's
    own "Query Logs (SQL Server)" app, confirmed installed via the API.
    Still open: does it need to stay reachable from every node, or should
@@ -229,8 +230,9 @@ allow_egress_ipv4 "192.168.42.1/32" 123 udp
 #                                update-check) - GitHub's IP ranges are
 #                                published but change; needs an ipset +
 #                                refresh job, not a static rule
-# Docker Hub (watchtower)       - wide/CDN-fronted; consider dropping
-#                                  watchtower instead of whitelisting it
+# Docker Hub (watchtower)       - keeping watchtower (decided); still
+#                                  wide/CDN-fronted, needs an ipset +
+#                                  refresh job like github.com above
 # 2a00:11c0:8:4::9 (Anexia)     - purpose not yet identified
 # 192.168.90.254:1433 (MSSQL)   - purpose confirmed: Technitium's own
 #                                  "Query Logs (SQL Server)" app is
