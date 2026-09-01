@@ -58,11 +58,43 @@ From systemd units on the host (`ansible-pull.service` /
 
 - `ansible-pull -U https://github.com/credfeto/credfeto-setup-arch-vm.git`
   — HTTPS/443 to `github.com` (clone/pull over HTTPS, per your note).
-- Whatever that playbook itself pulls (package mirrors, etc.) — **not yet
-  audited**, needs a read of `credfeto-setup-arch-vm` to know its full
-  egress footprint (pacman/AUR mirrors, dotnet/nuget, npm — see zone list
-  below, several look like they're meant to go through internal caching
-  proxies rather than out to the internet directly).
+
+**Audited `credfeto-setup-arch-vm` directly** (cloned at
+`~/work/personal/credfeto-setup-arch-vm`). Findings:
+
+- Package/registry mirrors (`pacman.markridgwell.com`,
+  `docker-cache.markridgwell.com`, etc.) all confirmed internal-only —
+  see "Other likely requirements" below.
+- `roles/users/tasks/main.yml` fetches `https://github.com/credfeto.keys`
+  every `ansible-pull` run, to provision `markr`'s SSH key. Same
+  `github.com` destination as the git clone above, not the API.
+- `roles/packages/tasks/main.yml`: installs the Chaotic AUR keyring and
+  mirrorlist packages directly from **`cdn-mirror.chaotic.cx`** (real
+  external CDN, not the internal proxy) — this task's `when:` condition
+  stays true forever once the signing key is trusted, so it runs on
+  *every* hourly pull, not just once at bootstrap. A genuinely new
+  external destination this doc hadn't accounted for.
+- Same role receives the Chaotic AUR signing key via
+  **`hkps://keyserver.ubuntu.com`** — but only when the key isn't already
+  locally trusted (guarded, with retries + a rescue block so a keyserver
+  outage doesn't break the whole play) — a rare/recovery-path dependency,
+  not a steady-state one.
+- `roles/ssh/tasks/main.yml` configures sshd's `AuthorizedKeysCommand` to
+  `curl https://keys.markridgwell.com/keys/<hostname>/%u` — confirmed
+  internal (`192.168.150.250`), but note this runs on **every SSH login**
+  to any of these boxes, not just during ansible-pull — a live runtime
+  dependency, not a periodic one.
+- `roles/telegraf/templates/telegraf.conf.j2` pushes metrics to
+  `https://metrics.markridgwell.com` every 10s — **this hostname has no
+  DNS record at all**, not even on the real public zone (`monitoring.markridgwell.com`
+  is the one that actually resolves, via Cloudflare). Looks like a
+  naming mismatch that's silently breaking metrics collection on all six
+  boxes. Separate issue from this egress audit — flagging it here since
+  it surfaced during the same pass.
+- Nothing in this repo calls `api.github.com` directly (only plain
+  `github.com`) — doesn't explain the live `20.26.156.215` traffic seen
+  earlier; strengthens the theory that it's Technitium's own
+  `dnsServerEnableCheckForUpdate`, not `ansible-pull`.
 
 ## DNS-to-DNS traffic (per your note)
 
@@ -140,12 +172,18 @@ locked down to only accept from the DNS VLAN.
    redirect that catches a client on another VLAN hardcoded to `8.8.8.8`
    and sends it to dns-02 instead, so it never reaches Google. Not egress,
    no action needed.
-4. Mostly resolved: package-mirror hostnames all point at the internal
-   `192.168.150.250` proxy (see above), so `credfeto-setup-arch-vm`'s
-   egress footprint for those is internal-only from the DNS boxes' side.
-   Still worth reading the playbook to confirm it actually uses these
-   internal names rather than hitting real upstreams directly, but no
-   longer expected to add public destinations to this list.
+4. ~~What does `credfeto-setup-arch-vm` reach?~~ **Resolved — audited
+   directly.** Package mirrors are internal-only (`192.168.150.250`), as
+   expected. Three real external destinations found that weren't
+   previously known: `cdn-mirror.chaotic.cx` (Chaotic AUR, runs every
+   hourly pull), `hkps://keyserver.ubuntu.com` (rare, only on an
+   untrusted key), and `github.com` itself for `credfeto.keys` (in
+   addition to the git clone already listed). Also surfaced: `keys.markridgwell.com`
+   is a live per-SSH-login dependency, not just an ansible-pull one; and
+   `metrics.markridgwell.com` has no DNS record anywhere (probably a
+   naming mismatch with `monitoring.markridgwell.com`) — telegraf may be
+   silently failing to push metrics on all six nodes. Separate issue,
+   flagged for you to decide on.
 5. ~~Is Watchtower still wanted?~~ **Decided: yes, keep it — and resolved:**
    it pulls through the Docker daemon's `registry-mirrors` setting
    (`docker-cache.markridgwell.com` -> `192.168.150.250`, internal), so it
@@ -154,10 +192,12 @@ locked down to only accept from the DNS VLAN.
    own "Query Logs (SQL Server)" app, confirmed installed via the API.
    Still open: does it need to stay reachable from every node, or should
    logging be consolidated?
-7. What exactly calls `api.github.com` (`20.26.156.215`/`.210`) — confirmed
-   as GitHub's API via DNS resolution, but not yet narrowed down to
-   `ansible-pull`'s git operations vs. Technitium's own
-   `dnsServerEnableCheckForUpdate` release check (or both).
+7. What exactly calls `api.github.com` (`20.26.156.215`/`.210`) —
+   confirmed as GitHub's API via DNS resolution. Ruled out `ansible-pull`
+   entirely (audit of `credfeto-setup-arch-vm` found only plain
+   `github.com` URLs, never the API) — Technitium's own
+   `dnsServerEnableCheckForUpdate` is now the leading, effectively only
+   remaining candidate.
 
 ## Suggested `firewalld` rules (host-level, draft — not applied)
 
@@ -249,10 +289,17 @@ allow_egress_ipv4 "192.168.150.250/32" 443 tcp
 allow_egress_ipv4 "192.168.90.254/32" 1433 tcp
 
 # --- TBD, needs confirming before enabling (see "Open questions") ---
-# github.com / api.github.com (ansible-pull and/or Technitium's own
-#                                update-check) - GitHub's IP ranges are
+# github.com (ansible-pull's git clone, credfeto.keys fetch, and/or
+#                                Technitium's own update-check via
+#                                api.github.com) - GitHub's IP ranges are
 #                                published but change; needs an ipset +
 #                                refresh job, not a static rule
+# cdn-mirror.chaotic.cx         - Chaotic AUR CDN, runs every hourly pull
+#                                  once the signing key is trusted; same
+#                                  ipset-or-published-range problem
+# hkps://keyserver.ubuntu.com   - GPG keyserver, only hit when the
+#                                  Chaotic AUR key isn't already trusted -
+#                                  rare/recovery-path, lower priority
 # 2a00:11c0:8:4::9 (Anexia)     - purpose not yet identified
 
 firewall-cmd --reload
