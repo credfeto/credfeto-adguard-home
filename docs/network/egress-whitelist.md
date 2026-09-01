@@ -37,8 +37,11 @@ From `docker-compose.yml`:
   revert to Cloudflare, but it's not an active problem today.
 - `DNS_SERVER_BLOCK_LIST_URLS` — hourly-ish fetch of blocklists over
   HTTPS/443 from:
-  - `abp.markridgwell.com` (own domain — confirm hosting IP before locking
-    down to a single address, it may move)
+  - `abp.markridgwell.com` — CNAME to `credfeto.github.io` (GitHub Pages).
+    Resolves within GitHub Pages' Fastly range (confirmed:
+    `185.199.108-111.153` / `2606:50c0:8000-8003::153`), same as
+    `raw.githubusercontent.com` below — already covered by that rule, no
+    separate pin needed.
   - `raw.githubusercontent.com` (GitHub/Fastly, hagezi blocklists)
 - `watchtower` — polls for image updates every hour
   (`WATCHTOWER_POLL_INTERVAL=3600`) against the container registry the
@@ -73,7 +76,7 @@ Snapshot only — a longer log review is needed before finalising the list.
 | Source | Destination | Port | Owner (from IP lookup) | Likely purpose |
 | --- | --- | --- | --- | --- |
 | 192.168.42.101 (dns-01) | 20.26.156.215 | 443 | AS8075 Microsoft (London) | Confirmed as **GitHub's API** (`api.github.com` resolves to `20.26.156.210`, same pool) — not NuGet.org as first guessed, and not Technitium's own app-update mechanism either (that's `download.technitium.com`, DigitalOcean-hosted, unrelated IP). Two candidate callers, not yet narrowed down further: `ansible-pull`'s git-over-HTTPS operations against `github.com`, or Technitium's own `dnsServerEnableCheckForUpdate` release-version check. |
-| 2a02:8010:61d5:42::/64 (a DNS-VLAN host, privacy address) | 2a00:11c0:8:4::9 | 443 | AS42473 Anexia (London) | Likely `abp.markridgwell.com` (your own blocklist host) — **confirm** |
+| 2a02:8010:61d5:42::/64 (a DNS-VLAN host, privacy address) | 2a00:11c0:8:4::9 | 443 | AS42473 Anexia (London) | **Not** `abp.markridgwell.com` — that's confirmed as GitHub Pages/Fastly (`185.199.108-111.0/22`), a different range entirely. This one's still unidentified. |
 | 192.168.42.105, .103 | 45.90.30.1 / 45.90.28.1 | 53 (udp) | NextDNS anycast | Verified via the Technitium API on all six nodes: every node's forwarder is correctly `https://dns.nextdns.io/be6f94/DNS-0X` with `forwarderProtocol: Https` — nothing is misconfigured. This plain UDP/53 traffic is almost certainly Technitium's own bootstrap resolution of the forwarder's hostname (`dns.nextdns.io` itself resolves within NextDNS's own anycast range), not the forwarder channel, which goes out separately over 443. `fcf757.dns.nextdns.io.db` is grouped with the anti-DoH-bypass block zones (same size/mtime as `dns.google.db`/`dns.opendns.com.db`/`dns.quad9.net.db`), not a second forwarder. No fix needed here. |
 
 Not egress, but worth recording: OPNsense's state table also showed
@@ -117,8 +120,10 @@ locked down to only accept from the DNS VLAN.
 
 ## Open questions before drafting actual firewall rules
 
-1. Should the block-list URL (`abp.markridgwell.com`) be locked to a
-   specific IP, or does it move (e.g. behind a CDN/dynamic DNS)?
+1. ~~Should `abp.markridgwell.com` be locked to a specific IP?~~
+   **Resolved:** it's a CNAME to `credfeto.github.io` (GitHub Pages),
+   resolving in the same Fastly range as `raw.githubusercontent.com` —
+   already covered by that rule, no separate pin needed.
 2. ~~Is NextDNS forwarding consistent/correct across nodes?~~ **Resolved:**
    confirmed via the API on all six nodes — every node correctly forwards
    to `https://dns.nextdns.io/be6f94/DNS-0X` over DoH. No action needed.
@@ -208,9 +213,11 @@ allow_egress_ipv4 "45.90.30.0/24" 53 udp
 # NextDNS, and the compose env var that named it is stale anyway) - left
 # out entirely.
 
-# --- Confirmed: raw.githubusercontent.com blocklists (443/tcp) ---
-# GitHub's documented Fastly range for raw content.
+# --- Confirmed: raw.githubusercontent.com AND abp.markridgwell.com ---
+# GitHub Pages/raw-content's Fastly range - covers both blocklist URLs,
+# abp.markridgwell.com being a CNAME to credfeto.github.io.
 allow_egress_ipv4 "185.199.108.0/22" 443 tcp
+allow_egress_ipv6 "2606:50c0::/32" 443 tcp
 
 # --- Confirmed (decided): NTP via OPNsense itself, not the public pool ---
 # Requires each node's timesyncd.conf to set NTP=192.168.42.1 first -
@@ -218,7 +225,6 @@ allow_egress_ipv4 "185.199.108.0/22" 443 tcp
 allow_egress_ipv4 "192.168.42.1/32" 123 udp
 
 # --- TBD, needs confirming before enabling (see "Open questions") ---
-# abp.markridgwell.com          - own domain, pin its real IP first
 # github.com / api.github.com (ansible-pull and/or Technitium's own
 #                                update-check) - GitHub's IP ranges are
 #                                published but change; needs an ipset +
@@ -236,10 +242,11 @@ firewall-cmd --reload
 
 Notes on this draft:
 
-- Domain-backed destinations (GitHub, NTP pool, Docker Hub, `abp.markridgwell.com`)
-  can't be pinned to a static IP/CIDR safely — CDNs and pools rotate. Options
-  once confirmed: a periodic job that resolves the name and rewrites an
-  `ipset`/policy rich-rules, or accept the provider's documented full CIDR
+- Domain-backed destinations still without a stable range (`github.com`
+  for `ansible-pull`, Docker Hub) can't be pinned to a static IP/CIDR
+  safely — CDNs rotate. Options once confirmed: a periodic job that
+  resolves the name and rewrites an `ipset`/policy rich-rules, or accept
+  the provider's documented full CIDR
   range if one exists and is stable (GitHub publishes one via
   `api.github.com/meta`).
 - This would need to be applied per-node (`dns-01`..`dns-06`), and ideally
