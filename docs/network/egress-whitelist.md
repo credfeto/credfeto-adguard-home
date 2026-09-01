@@ -89,10 +89,13 @@ From systemd units on the host (`ansible-pull.service` /
   record at all, likely a naming mismatch against `monitoring.markridgwell.com`
   (the one that actually resolves). **Fixed:** tracked and being worked
   on in credfeto/credfeto-monitoring#28 and credfeto/credfeto-setup-arch-vm#220.
-- Nothing in this repo calls `api.github.com` directly (only plain
-  `github.com`) — doesn't explain the live `20.26.156.215` traffic seen
-  earlier; strengthens the theory that it's Technitium's own
-  `dnsServerEnableCheckForUpdate`, not `ansible-pull`.
+- **Now fully explains the live `20.26.156.215` traffic**: a direct TLS
+  cert probe on that IP shows `CN=github.com` (plain GitHub, not the API
+  as first guessed from IP-range proximity alone). That's exactly the
+  `github.com` this repo calls — the git clone and/or the `credfeto.keys`
+  fetch, both here. Technitium's own update-check is separately confirmed
+  to never touch GitHub (source shows it redirects through
+  `download.technitium.com` instead).
 
 ## DNS-to-DNS traffic (per your note)
 
@@ -110,7 +113,7 @@ Snapshot only — a longer log review is needed before finalising the list.
 
 | Source | Destination | Port | Owner (from IP lookup) | Likely purpose |
 | --- | --- | --- | --- | --- |
-| 192.168.42.101 (dns-01) | 20.26.156.215 | 443 | AS8075 Microsoft (London) | Confirmed as **GitHub's API** (`api.github.com` resolves to `20.26.156.210`, same pool) — not NuGet.org as first guessed, and not Technitium's own app-update mechanism either (that's `download.technitium.com`, DigitalOcean-hosted, unrelated IP). Two candidate callers, not yet narrowed down further: `ansible-pull`'s git-over-HTTPS operations against `github.com`, or Technitium's own `dnsServerEnableCheckForUpdate` release-version check. |
+| 192.168.42.101 (dns-01) | 20.26.156.215 | 443 | AS8075 Microsoft (London) | **Fully resolved.** Direct TLS cert probe shows `CN=github.com` — plain `github.com`, not the API (the earlier "same pool as `api.github.com`" reasoning was wrong; IP adjacency in Azure's shared ranges doesn't mean same service). Also ruled out Technitium's own update-check by reading its source: `dnsServerEnableCheckForUpdate` hits `https://go.technitium.com/?id=42`, which redirects to `download.technitium.com` — never touches GitHub at all. So this is `ansible-pull`'s git clone and/or its `credfeto.keys` fetch, both confirmed real `github.com` calls in the playbook audit. |
 | 2a02:8010:61d5:42::/64 (a DNS-VLAN host, privacy address) | 2a00:11c0:8:4::9 | 443 | AS42473 Anexia (London) | TLS certificate probe shows `O=NextDNS Inc.; CN=blockpage.nextdns.io`. **Confirmed the "block page" setting is disabled on the `be6f94` profile itself**, so this isn't live/current double-blocking behaviour — the connection in the state-table snapshot is most likely stale/historic, or an unrelated one-off. Not treated as an ongoing egress requirement; drop the corresponding firewalld rule below unless it recurs. |
 | 192.168.42.105, .103 | 45.90.30.1 / 45.90.28.1 | 53 (udp) | NextDNS anycast | Verified via the Technitium API on all six nodes: every node's forwarder is correctly `https://dns.nextdns.io/be6f94/DNS-0X` with `forwarderProtocol: Https` — nothing is misconfigured. This plain UDP/53 traffic is almost certainly Technitium's own bootstrap resolution of the forwarder's hostname (`dns.nextdns.io` itself resolves within NextDNS's own anycast range), not the forwarder channel, which goes out separately over 443. `fcf757.dns.nextdns.io.db` is grouped with the anti-DoH-bypass block zones (same size/mtime as `dns.google.db`/`dns.opendns.com.db`/`dns.quad9.net.db`), not a second forwarder. No fix needed here. |
 
@@ -188,12 +191,14 @@ locked down to only accept from the DNS VLAN.
    own "Query Logs (SQL Server)" app, confirmed installed via the API.
    Still open: does it need to stay reachable from every node, or should
    logging be consolidated?
-7. What exactly calls `api.github.com` (`20.26.156.215`/`.210`) —
-   confirmed as GitHub's API via DNS resolution. Ruled out `ansible-pull`
-   entirely (audit of `credfeto-setup-arch-vm` found only plain
-   `github.com` URLs, never the API) — Technitium's own
-   `dnsServerEnableCheckForUpdate` is now the leading, effectively only
-   remaining candidate.
+7. ~~What exactly calls `api.github.com`?~~ **Resolved, and the earlier
+   "GitHub API" attribution was wrong.** Direct TLS cert probe on
+   `20.26.156.215` shows `CN=github.com`, not the API. Also confirmed
+   Technitium's update-check never touches GitHub at all (its source
+   shows `https://go.technitium.com/?id=42`, which redirects to
+   `download.technitium.com`). It's `ansible-pull`'s git clone and/or its
+   `credfeto.keys` fetch — both real `github.com` calls already known
+   from the playbook audit.
 8. ~~Is NextDNS's own blocking active alongside Technitium's?~~
    **Resolved:** confirmed the "block page" setting is disabled on the
    `be6f94` profile. The block-page IP seen in the state-table snapshot
@@ -294,10 +299,11 @@ allow_egress_ipv4 "192.168.150.250/32" 443 tcp
 allow_egress_ipv4 "192.168.90.254/32" 1433 tcp
 
 # --- TBD, needs confirming before enabling (see "Open questions") ---
-# github.com (ansible-pull's git clone, credfeto.keys fetch, and/or
-#                                Technitium's own update-check via
-#                                api.github.com) - GitHub's IP ranges are
-#                                published but change; needs an ipset +
+# github.com (ansible-pull's git clone and credfeto.keys fetch -
+#                                confirmed via TLS cert probe, not
+#                                Technitium, which never touches GitHub) -
+#                                GitHub's IP ranges are published but
+#                                change; needs an ipset +
 #                                refresh job, not a static rule
 # cdn-mirror.chaotic.cx         - Chaotic AUR CDN, runs every hourly pull
 #                                  once the signing key is trusted; same
