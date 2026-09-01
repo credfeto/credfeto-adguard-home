@@ -111,7 +111,7 @@ Snapshot only — a longer log review is needed before finalising the list.
 | Source | Destination | Port | Owner (from IP lookup) | Likely purpose |
 | --- | --- | --- | --- | --- |
 | 192.168.42.101 (dns-01) | 20.26.156.215 | 443 | AS8075 Microsoft (London) | Confirmed as **GitHub's API** (`api.github.com` resolves to `20.26.156.210`, same pool) — not NuGet.org as first guessed, and not Technitium's own app-update mechanism either (that's `download.technitium.com`, DigitalOcean-hosted, unrelated IP). Two candidate callers, not yet narrowed down further: `ansible-pull`'s git-over-HTTPS operations against `github.com`, or Technitium's own `dnsServerEnableCheckForUpdate` release-version check. |
-| 2a02:8010:61d5:42::/64 (a DNS-VLAN host, privacy address) | 2a00:11c0:8:4::9 | 443 | AS42473 Anexia (London) | **Not** `abp.markridgwell.com` — that's confirmed as GitHub Pages/Fastly (`185.199.108-111.0/22`), a different range entirely. This one's still unidentified. |
+| 2a02:8010:61d5:42::/64 (a DNS-VLAN host, privacy address) | 2a00:11c0:8:4::9 | 443 | AS42473 Anexia (London) | **Resolved:** TLS certificate probe (`curl --resolve` + SNI) shows `O=NextDNS Inc.; CN=blockpage.nextdns.io` — this is NextDNS's own block-page server, shown when a query hits a domain NextDNS blocks. Part of the same NextDNS integration already covered, not a separate destination. |
 | 192.168.42.105, .103 | 45.90.30.1 / 45.90.28.1 | 53 (udp) | NextDNS anycast | Verified via the Technitium API on all six nodes: every node's forwarder is correctly `https://dns.nextdns.io/be6f94/DNS-0X` with `forwarderProtocol: Https` — nothing is misconfigured. This plain UDP/53 traffic is almost certainly Technitium's own bootstrap resolution of the forwarder's hostname (`dns.nextdns.io` itself resolves within NextDNS's own anycast range), not the forwarder channel, which goes out separately over 443. `fcf757.dns.nextdns.io.db` is grouped with the anti-DoH-bypass block zones (same size/mtime as `dns.google.db`/`dns.opendns.com.db`/`dns.quad9.net.db`), not a second forwarder. No fix needed here. |
 
 Not egress, but worth recording: OPNsense's state table also showed
@@ -257,6 +257,10 @@ allow_egress_ipv4 "45.90.28.0/24" 443 tcp
 allow_egress_ipv4 "45.90.30.0/24" 443 tcp
 allow_egress_ipv4 "45.90.28.0/24" 53 udp
 allow_egress_ipv4 "45.90.30.0/24" 53 udp
+# NextDNS's block-page server (blockpage.nextdns.io), shown for blocked
+# domains - confirmed via TLS cert probe, Anexia-hosted, separate from
+# the anycast resolver range above.
+allow_egress_ipv6 "2a00:11c0:8:4::9/128" 443 tcp
 
 # Cloudflare's security DoH forwarder is NOT wanted (superseded by
 # NextDNS, and the compose env var that named it is stale anyway) - left
@@ -296,7 +300,6 @@ allow_egress_ipv4 "192.168.90.254/32" 1433 tcp
 # hkps://keyserver.ubuntu.com   - GPG keyserver, only hit when the
 #                                  Chaotic AUR key isn't already trusted -
 #                                  rare/recovery-path, lower priority
-# 2a00:11c0:8:4::9 (Anexia)     - purpose not yet identified
 
 firewall-cmd --reload
 ```
