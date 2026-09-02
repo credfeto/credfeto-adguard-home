@@ -242,8 +242,9 @@ allow_egress ipv4 45.90.30.0/24 tcp 443
 allow_egress ipv6 2a0f:3b03:100:2:5054:ff:fe90:4a77/128 tcp 443
 allow_egress ipv6 2a00:11c0:8:4::9/128 tcp 443
 
-# raw.githubusercontent.com blocklists and abp.markridgwell.com (a CNAME
-# to credfeto.github.io) — both land in GitHub Pages' Fastly range.
+# abp.markridgwell.com blocklists (a CNAME to credfeto.github.io) -
+# GitHub Pages' Fastly range. Removable once adblockplusrules#623 serves
+# this content locally.
 allow_egress ipv4 185.199.108.0/22 tcp 443
 allow_egress ipv6 2606:50c0::/32 tcp 443
 

@@ -55,6 +55,7 @@ Please ADD ALL Changes to the UNRELEASED SECTION and not a specific release
 - Widened the allowed IPv6 firewall network from 2a02:8010:61d5::/64 to 2a02:8010:61d5::/48 to cover all subnets, not just subnet 0
 - Switched Technitium recursion ACL from AllowOnlyForPrivateNetworks to an explicit network ACL including 2a02:8010:61d5::/48, since public IPv6 addresses are never classified as private
 - Renumbered dns-01 through dns-04 from 192.168.42.251-254 to 192.168.42.101-104, added dns-05 (192.168.42.105), and added AAAA records (2a02:8010:61d5:42::101-105) for all five in lan.db and dns.lan.db
+- Removed stale hagezi block-list URLs from docker-compose - hagezi was deliberately disabled in the live config
 ### Deprecated
 ### Removed
 ### Deployment Changes

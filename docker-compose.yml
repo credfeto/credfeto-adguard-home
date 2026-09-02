@@ -29,7 +29,7 @@ services:
       - DNS_SERVER_FORWARDER_PROTOCOL=Https
       - DNS_SERVER_ENABLE_BLOCKING=true
       - DNS_SERVER_ALLOW_TXT_BLOCKING_REPORT=true
-      - DNS_SERVER_BLOCK_LIST_URLS=https://abp.markridgwell.com/hosts.txt,https://abp.markridgwell.com/adblock.txt,https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/doh-vpn-proxy-bypass.txt,https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/multi.txt,https://raw.githubusercontent.com/hagezi/dns-blocklists/main/hosts/hoster.txt
+      - DNS_SERVER_BLOCK_LIST_URLS=https://abp.markridgwell.com/hosts.txt,https://abp.markridgwell.com/adblock.txt
       - DNS_SERVER_LOG_USING_LOCAL_TIME=true
     volumes:
       - /data/technitium/config:/etc/dns

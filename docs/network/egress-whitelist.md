@@ -39,13 +39,16 @@ From `docker-compose.yml`:
   `docker-compose.yml` anyway so a fresh volume/redeploy doesn't silently
   revert to Cloudflare, but it's not an active problem today.
 - `DNS_SERVER_BLOCK_LIST_URLS` — hourly-ish fetch of blocklists over
-  HTTPS/443 from:
-  - `abp.markridgwell.com` — CNAME to `credfeto.github.io` (GitHub Pages).
-    Resolves within GitHub Pages' Fastly range (confirmed:
-    `185.199.108-111.153` / `2606:50c0:8000-8003::153`), same as
-    `raw.githubusercontent.com` below — already covered by that rule, no
-    separate pin needed.
-  - `raw.githubusercontent.com` (GitHub/Fastly, hagezi blocklists)
+  HTTPS/443 from `abp.markridgwell.com` — CNAME to `credfeto.github.io`
+  (GitHub Pages), resolving within GitHub Pages' Fastly range
+  (confirmed: `185.199.108-111.153` / `2606:50c0:8000-8003::153`).
+  The compose file also listed three hagezi lists on
+  `raw.githubusercontent.com`, but the live `blockListUrls` on all six
+  nodes (checked via the API) has only the two abp URLs — hagezi was
+  deliberately turned off via the UI and the compose entry was stale;
+  now removed (adblockplusrules#622 closed as not planned). The Fastly
+  allow rule exists solely for `abp.markridgwell.com`, and goes away
+  entirely once adblockplusrules#623 (local serving) lands.
 - `watchtower` — polls for image updates every hour
   (`WATCHTOWER_POLL_INTERVAL=3600`). **Confirmed not direct-to-internet:**
   Docker's daemon config (`/etc/docker/daemon.json`) sets
