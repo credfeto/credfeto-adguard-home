@@ -257,6 +257,66 @@ entirely (real outage, since reverted — see `dnyw4l3n13/proxmox`'s
 firewall may be fine for other, non-DNS VMs on that cluster; it's a dead
 end specifically for restricting these DNS servers' own egress.
 
+## Live validation on dns-06 (2026-09-02): logging catch-all findings
+
+The `dns-egress` policy (target `ACCEPT`, inert) plus a temporary
+lowest-priority catch-all rule (`priority="32767" log
+prefix="dns-egress-unmatched: " accept`, one per family — **live-only on
+dns-06, deliberately NOT in the committed `update` script**, since a
+permanent accept-anything rule would silently defeat real DROP
+enforcement later) surfaced real gaps within minutes that `ACCEPT`-mode
+testing alone could never show:
+
+1. **IPv6 NDP (ICMPv6 types 135/136)** — fundamental link-local
+   operation, the IPv6 equivalent of ARP. Enforcing DROP without
+   allowing it would break IPv6 networking on the host entirely.
+   Fixed: `rule family="ipv6" protocol value="ipv6-icmp" accept`
+   (all ICMPv6 — narrowly filtering ICMPv6 subtypes is a well-known
+   anti-pattern that breaks PMTU discovery etc.). Verified: NDP no
+   longer hits the catch-all.
+2. **DHCPv6 client traffic** (UDP 546->547 to `ff02::1:2`, the DHCP
+   relay/server multicast address) — address configuration. Fixed:
+   `rule family="ipv6" destination address="ff02::1:2/128" port
+   port="547" protocol="udp" accept`.
+3. **NAT64 traffic to `64:ff9b::/96`** — this network runs DNS64
+   (Technitium's DNS64 app) and a TCP/443 SYN was seen to
+   `64:ff9b::141a:9cd7` (= `20.26.156.215`, github.com, embedded).
+   Traffic to an already-allowed IPv4 destination can take a completely
+   different, NAT64-synthesised IPv6 path our rules never covered.
+   **Not yet fixed** — a blanket `64:ff9b::/96` allow would let any
+   IPv4 destination be reached via its synthesised form, bypassing the
+   whole IPv4 allow-list; needs per-destination NAT64 equivalents
+   (an IPv4 `/N` maps cleanly to `64:ff9b::…/(96+N)`) or suppressing
+   the NAT64 path for this host. Open.
+4. **NextDNS over IPv6 was never covered at all** — only the IPv4
+   `45.90.28.0/24`/`45.90.30.0/24` rules existed, despite IPv6 coverage
+   having been explicitly asked for. `dns.nextdns.io` is a CNAME to
+   `steering.nextdns.io`, whose AAAA answers are
+   `2a0f:3b03:100:2:5054:ff:fe90:4a77` (AS58313 Misaka) and
+   `2a00:11c0:8:4::9` (Anexia) — **the same Anexia address earlier
+   written off as "just the disabled block page"; that exclusion was
+   wrong, it's dual-purpose steering/DoH infrastructure and IS
+   required.** Live traffic also showed UDP/53 to two Cloudflare-owned
+   addresses (`2803:f800:50::6ca2:c181`, `2a06:98c1:50::ac40:2181`) —
+   the steering layer routes the actual data-plane per-client, so the
+   full IPv6 footprint may not be statically enumerable; all four seen
+   addresses are allowed as `/128`s for now, and if more keep
+   appearing this needs the ipset/dynamic treatment like github.com.
+   Additionally the NextDNS dashboard's own setup page gives the
+   official per-profile IPv6 anycast pair — `2a07:a8c0::be:6f94` and
+   `2a07:a8c1::be:6f94` (config ID embedded) — stable and documented;
+   both allowed on 53/udp+tcp (plain-DNS endpoints, port 53 only).
+
+Also fixed during this validation pass (in the `update` script itself):
+`cd "${BASEDIR}"` so docker compose works regardless of caller's cwd;
+firewalld reload between ipset creation and rules referencing them;
+ipset names shortened below the kernel's 32-byte `IPSET_MAXNAMELEN`
+(`dns-egress-cdn-mirror-chaotic-cx-v4` at 35 chars was rejected as
+INVALID_IPSET). Cleanup gotcha for the record: `firewall-cmd
+--remove-rich-rule` refuses to remove a rule referencing an
+already-deleted ipset — the dangling rule had to be stripped from
+`/etc/firewalld/policies/dns-egress.xml` directly.
+
 ## Suggested `firewalld` rules (host-level, draft — not applied)
 
 dns-01 runs `firewalld 2.5.1` locally, active zone `public` (default),

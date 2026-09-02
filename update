@@ -174,6 +174,19 @@ block_port udp 68
 ## why this stays inert (ACCEPT) until deliberately turned on.
 ensure_egress_policy
 
+# All ICMPv6 — NDP (the IPv6 equivalent of ARP) is fundamental link
+# operation; dropping it breaks IPv6 networking entirely, and narrowly
+# filtering ICMPv6 subtypes is a known anti-pattern (breaks PMTU
+# discovery etc.). Found live via the dns-06 logging catch-all.
+ICMPV6_RULE="rule family=\"ipv6\" protocol value=\"ipv6-icmp\" accept"
+if ! sudo firewall-cmd --policy=dns-egress --query-rich-rule="${ICMPV6_RULE}" --permanent > /dev/null 2>&1; then
+    sudo firewall-cmd --permanent --policy=dns-egress --add-rich-rule="${ICMPV6_RULE}" || die "Failed to add egress rule: ${ICMPV6_RULE}"
+fi
+
+# DHCPv6 client (address configuration) to the DHCP relay/server
+# multicast address. Found live via the dns-06 logging catch-all.
+allow_egress ipv6 ff02::1:2/128 udp 547
+
 # DNS-to-DNS sync between the six nodes — a range, not the six individual
 # /32s, since .101-.106 is just what exists today.
 allow_egress ipv4 192.168.42.96/28 tcp 53
@@ -187,6 +200,28 @@ allow_egress ipv4 45.90.28.0/24 tcp 443
 allow_egress ipv4 45.90.30.0/24 tcp 443
 allow_egress ipv4 45.90.28.0/24 udp 53
 allow_egress ipv4 45.90.30.0/24 udp 53
+
+# NextDNS over IPv6. dns.nextdns.io is a CNAME to steering.nextdns.io,
+# whose AAAA answers are the Misaka and Anexia addresses below (the
+# Anexia one doubles as the block-page host but is required steering/DoH
+# infrastructure regardless). The two Cloudflare-hosted addresses are
+# where the steering layer routed this network's actual DNS traffic —
+# per-client and possibly not statically enumerable; if more keep
+# appearing in the dns-06 catch-all log, this needs the ipset/dynamic
+# treatment like github.com. All found live via the logging catch-all.
+allow_egress ipv6 2a0f:3b03:100:2:5054:ff:fe90:4a77/128 tcp 443
+allow_egress ipv6 2a00:11c0:8:4::9/128 tcp 443
+allow_egress ipv6 2803:f800:50::6ca2:c181/128 udp 53
+allow_egress ipv6 2a06:98c1:50::ac40:2181/128 udp 53
+
+# The official per-profile NextDNS IPv6 anycast pair (config ID be6f94
+# embedded in the address), from the NextDNS dashboard's own setup page.
+# Stable and documented, unlike the steering-routed addresses above.
+# Plain-DNS endpoints - port 53 only.
+allow_egress ipv6 2a07:a8c0::be:6f94/128 udp 53
+allow_egress ipv6 2a07:a8c0::be:6f94/128 tcp 53
+allow_egress ipv6 2a07:a8c1::be:6f94/128 udp 53
+allow_egress ipv6 2a07:a8c1::be:6f94/128 tcp 53
 
 # raw.githubusercontent.com blocklists and abp.markridgwell.com (a CNAME
 # to credfeto.github.io) — both land in GitHub Pages' Fastly range.
