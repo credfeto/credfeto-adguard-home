@@ -203,6 +203,12 @@ ensure_ipset dns-egress-github-com-v4 inet
 ensure_ipset dns-egress-github-com-v6 inet6
 ensure_ipset dns-egress-cdn-mirror-chaotic-cx-v4 inet
 ensure_ipset dns-egress-cdn-mirror-chaotic-cx-v6 inet6
+
+# A newly created --permanent ipset isn't recognised as a valid
+# rich-rule destination target until firewalld reloads — without this,
+# --add-rich-rule fails with INVALID_IPSET even though the ipset exists.
+sudo firewall-cmd --reload
+
 allow_egress_ipset ipv4 dns-egress-github-com-v4 tcp 443
 allow_egress_ipset ipv6 dns-egress-github-com-v6 tcp 443
 allow_egress_ipset ipv4 dns-egress-cdn-mirror-chaotic-cx-v4 tcp 443
