@@ -27,6 +27,18 @@ resolve_family() {
     esac
 }
 
+# The NAT64 well-known prefix (64:ff9b::/96, RFC 6052) embeds the IPv4
+# address in the last 32 bits. This network runs DNS64, so IPv6-preferring
+# clients reach IPv4-only destinations via these synthesised addresses -
+# but whether a getent lookup returns the synthesised AAAA depends on
+# resolver state at that instant, so relying on resolution makes entries
+# flap in and out. Compute the form deterministically from every IPv4
+# address instead. Canonical hex output (not the a.b.c.d mixed notation)
+# so string comparison against firewalld's --get-entries stays stable.
+nat64_for() {
+    printf '%s' "$1" | awk -F. '{printf "64:ff9b::%02x%02x:%02x%02x\n", $1, $2, $3, $4}'
+}
+
 # firewalld's own ipset entries are the source of truth for "current" -
 # this script never keeps state of its own between runs.
 sync_ipset() {
@@ -50,8 +62,19 @@ sync_ipset() {
 for _pair in ${DOMAIN_SLUGS}; do
     _domain="${_pair%%:*}"
     _slug="${_pair#*:}"
-    sync_ipset "dns-egress-${_slug}-v4" "$(resolve_family "${_domain}" v4)"
-    sync_ipset "dns-egress-${_slug}-v6" "$(resolve_family "${_domain}" v6)"
+    _v4="$(resolve_family "${_domain}" v4)"
+
+    # v6 wanted-set = native AAAA answers plus the computed NAT64 form of
+    # every IPv4 address, deduplicated.
+    _nat64=""
+    for _ip in ${_v4}; do
+        _nat64="${_nat64}$(nat64_for "${_ip}")
+"
+    done
+    _v6="$(printf '%s\n%s' "$(resolve_family "${_domain}" v6)" "${_nat64}" | sort -u)"
+
+    sync_ipset "dns-egress-${_slug}-v4" "${_v4}"
+    sync_ipset "dns-egress-${_slug}-v6" "${_v6}"
 done
 
 sudo firewall-cmd --reload
