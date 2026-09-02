@@ -1,0 +1,12 @@
+[Unit]
+Description=Periodically refresh dynamic DNS-egress firewalld ipsets
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=10min
+RandomizedDelaySec=1min
+AccuracySec=1s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

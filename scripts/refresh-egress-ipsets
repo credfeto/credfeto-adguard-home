@@ -1,0 +1,55 @@
+#!/bin/sh
+
+# Keeps the dns-egress-* firewalld ipsets in sync with current DNS
+# resolution for domains that have no stable static IP/CIDR to allow
+# (CDN-fronted). See docs/network/egress-whitelist.md, open questions
+# 9-10, for why these specific domains need this and why a static rule
+# doesn't work for them.
+#
+# Run directly, or via the dns-egress-refresh.timer systemd unit that
+# ./update installs.
+
+set -eu
+
+DOMAINS="github.com cdn-mirror.chaotic.cx"
+
+slug_for() {
+    printf '%s' "$1" | tr '.' '-'
+}
+
+resolve_family() {
+    _domain="$1"
+    _family="$2"
+    case "${_family}" in
+        v4) getent ahosts "${_domain}" | awk '$1 !~ /:/ {print $1}' | sort -u ;;
+        v6) getent ahosts "${_domain}" | awk '$1 ~ /:/ {print $1}' | sort -u ;;
+    esac
+}
+
+# firewalld's own ipset entries are the source of truth for "current" -
+# this script never keeps state of its own between runs.
+sync_ipset() {
+    _set="$1"
+    _wanted="$2"
+    _current="$(sudo firewall-cmd --permanent --ipset="${_set}" --get-entries 2>/dev/null || true)"
+
+    printf '%s\n' "${_current}" | while IFS= read -r _ip; do
+        [ -n "${_ip}" ] || continue
+        printf '%s\n' "${_wanted}" | grep -qx "${_ip}" \
+            || sudo firewall-cmd --permanent --ipset="${_set}" --remove-entry="${_ip}" > /dev/null
+    done
+
+    printf '%s\n' "${_wanted}" | while IFS= read -r _ip; do
+        [ -n "${_ip}" ] || continue
+        printf '%s\n' "${_current}" | grep -qx "${_ip}" \
+            || sudo firewall-cmd --permanent --ipset="${_set}" --add-entry="${_ip}" > /dev/null
+    done
+}
+
+for _domain in ${DOMAINS}; do
+    _slug="$(slug_for "${_domain}")"
+    sync_ipset "dns-egress-${_slug}-v4" "$(resolve_family "${_domain}" v4)"
+    sync_ipset "dns-egress-${_slug}-v6" "$(resolve_family "${_domain}" v6)"
+done
+
+sudo firewall-cmd --reload

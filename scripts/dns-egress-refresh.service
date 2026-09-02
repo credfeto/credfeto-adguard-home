@@ -1,0 +1,14 @@
+[Unit]
+Description=Refresh dynamic DNS-egress firewalld ipsets (github.com, cdn-mirror.chaotic.cx)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/refresh-egress-ipsets
+ProtectSystem=full
+ProtectHome=true
+NoNewPrivileges=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictRealtime=true
+RestrictSUIDSGID=true

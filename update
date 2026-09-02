@@ -32,6 +32,58 @@ block_port() {
     fi
 }
 
+# Deny-by-default outbound policy. Target reflects DNS_EGRESS_ENFORCE:
+# DROP once proven stable, ACCEPT (every rule present but inert) until
+# then. See docs/network/egress-whitelist.md for the destination list.
+ensure_egress_policy() {
+    if ! sudo firewall-cmd --permanent --info-policy=dns-egress > /dev/null 2>&1; then
+        sudo firewall-cmd --permanent --new-policy=dns-egress || die "Failed to create dns-egress policy"
+        sudo firewall-cmd --permanent --policy=dns-egress --add-ingress-zone=HOST || die "Failed to set dns-egress ingress zone"
+        sudo firewall-cmd --permanent --policy=dns-egress --add-egress-zone=ANY || die "Failed to set dns-egress egress zone"
+    fi
+    TARGET="ACCEPT"
+    if [ "${DNS_EGRESS_ENFORCE}" = "true" ]; then
+        TARGET="DROP"
+    fi
+    CURRENT_TARGET="$(sudo firewall-cmd --permanent --policy=dns-egress --get-target)"
+    if [ "${CURRENT_TARGET}" != "${TARGET}" ]; then
+        sudo firewall-cmd --permanent --policy=dns-egress --set-target="${TARGET}" || die "Failed to set dns-egress target"
+    fi
+}
+
+allow_egress() {
+    FAMILY="$1"
+    DEST="$2"
+    PROTO="$3"
+    PORT="$4"
+    RULE="rule family=\"${FAMILY}\" destination address=\"${DEST}\" port protocol=\"${PROTO}\" port=\"${PORT}\" accept"
+    if ! sudo firewall-cmd --policy=dns-egress --query-rich-rule="${RULE}" --permanent > /dev/null 2>&1; then
+        sudo firewall-cmd --permanent --policy=dns-egress --add-rich-rule="${RULE}" || die "Failed to add egress rule: ${RULE}"
+    fi
+}
+
+allow_egress_ipset() {
+    FAMILY="$1"
+    IPSET="$2"
+    PROTO="$3"
+    PORT="$4"
+    RULE="rule family=\"${FAMILY}\" destination ipset=\"${IPSET}\" port protocol=\"${PROTO}\" port=\"${PORT}\" accept"
+    if ! sudo firewall-cmd --policy=dns-egress --query-rich-rule="${RULE}" --permanent > /dev/null 2>&1; then
+        sudo firewall-cmd --permanent --policy=dns-egress --add-rich-rule="${RULE}" || die "Failed to add egress rule: ${RULE}"
+    fi
+}
+
+# Ipsets for the dynamic (CDN-fronted, no stable CIDR) destinations -
+# created empty here; scripts/refresh-egress-ipsets populates and
+# maintains their actual entries.
+ensure_ipset() {
+    NAME="$1"
+    FAMILY="$2"
+    if ! sudo firewall-cmd --permanent --get-ipsets | grep -qw "${NAME}"; then
+        sudo firewall-cmd --permanent --new-ipset="${NAME}" --type=hash:ip --option=family="${FAMILY}" || die "Failed to create ipset ${NAME}"
+    fi
+}
+
 
 
 BASEDIR="$(dirname "$(readlink -f "$0")")"
@@ -45,6 +97,9 @@ DNS_ADMIN_PASSWORD="$(grep -E '^[[:space:]]*DNS_ADMIN_PASSWORD[[:space:]]*=' "${
 if [ -z "${DNS_ADMIN_PASSWORD}" ]; then
     die "DNS_ADMIN_PASSWORD is not set or is empty in ${ENV_FILE}"
 fi
+
+DNS_EGRESS_ENFORCE="$(grep -E '^[[:space:]]*DNS_EGRESS_ENFORCE[[:space:]]*=' "${ENV_FILE}" | tail -n 1 | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+DNS_EGRESS_ENFORCE="${DNS_EGRESS_ENFORCE:-false}"
 
 git -C "${BASEDIR}" pull
 
@@ -108,6 +163,62 @@ allow_port udp 443
 block_port udp 67
 block_port udp 68
 
+## Outbound (egress) lockdown — see docs/network/egress-whitelist.md for
+## the destination list and rationale, and DNS_EGRESS_ENFORCE above for
+## why this stays inert (ACCEPT) until deliberately turned on.
+ensure_egress_policy
+
+# DNS-to-DNS sync between the six nodes — a range, not the six individual
+# /32s, since .101-.106 is just what exists today.
+allow_egress ipv4 192.168.42.96/28 tcp 53
+allow_egress ipv4 192.168.42.96/28 udp 53
+allow_egress ipv6 2a02:8010:61d5:42::100/124 tcp 53
+allow_egress ipv6 2a02:8010:61d5:42::100/124 udp 53
+
+# NextDNS (be6f94), the sole forwarder — DoH/443, plus the plain-UDP/53
+# bootstrap lookup of dns.nextdns.io's own hostname.
+allow_egress ipv4 45.90.28.0/24 tcp 443
+allow_egress ipv4 45.90.30.0/24 tcp 443
+allow_egress ipv4 45.90.28.0/24 udp 53
+allow_egress ipv4 45.90.30.0/24 udp 53
+
+# raw.githubusercontent.com blocklists and abp.markridgwell.com (a CNAME
+# to credfeto.github.io) — both land in GitHub Pages' Fastly range.
+allow_egress ipv4 185.199.108.0/22 tcp 443
+allow_egress ipv6 2606:50c0::/32 tcp 443
+
+# NTP via OPNsense, not the public pool.
+allow_egress ipv4 192.168.42.1/32 udp 123
+
+# Internal package/registry/docker-cache proxy — fronts pacman, aur,
+# dotnet, npm, api-nuget, docker-cache and docker-registry alike.
+allow_egress ipv4 192.168.150.250/32 tcp 443
+
+# Technitium's own "Query Logs (SQL Server)" app.
+allow_egress ipv4 192.168.90.254/32 tcp 1433
+
+# Dynamic (CDN-fronted, no stable CIDR) destinations — ipsets kept fresh
+# by scripts/refresh-egress-ipsets, installed and run below.
+ensure_ipset dns-egress-github-com-v4 inet
+ensure_ipset dns-egress-github-com-v6 inet6
+ensure_ipset dns-egress-cdn-mirror-chaotic-cx-v4 inet
+ensure_ipset dns-egress-cdn-mirror-chaotic-cx-v6 inet6
+allow_egress_ipset ipv4 dns-egress-github-com-v4 tcp 443
+allow_egress_ipset ipv6 dns-egress-github-com-v6 tcp 443
+allow_egress_ipset ipv4 dns-egress-cdn-mirror-chaotic-cx-v4 tcp 443
+allow_egress_ipset ipv6 dns-egress-cdn-mirror-chaotic-cx-v6 tcp 443
+
 sudo firewall-cmd --reload
+
+# Install and enable the dynamic-egress ipset refresh timer.
+sudo install -m 755 "${BASEDIR}/scripts/refresh-egress-ipsets" /usr/local/bin/refresh-egress-ipsets
+sudo install -m 644 "${BASEDIR}/scripts/dns-egress-refresh.service" /etc/systemd/system/dns-egress-refresh.service
+sudo install -m 644 "${BASEDIR}/scripts/dns-egress-refresh.timer" /etc/systemd/system/dns-egress-refresh.timer
+sudo systemctl daemon-reload
+sudo systemctl enable --now dns-egress-refresh.timer
+
+# Populate the ipsets immediately rather than waiting for the timer's
+# first fire.
+sudo /usr/local/bin/refresh-egress-ipsets
 
 "${BASEDIR}/scripts/sync-zones" --all
