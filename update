@@ -62,6 +62,19 @@ allow_egress() {
     fi
 }
 
+# Any-destination, port-scoped egress allowance - reserve for traffic
+# classes whose legitimate destinations are inherently not enumerable
+# (outbound DNS from a recursive resolver).
+allow_egress_port() {
+    FAMILY="$1"
+    PROTO="$2"
+    PORT="$3"
+    RULE="rule family=\"${FAMILY}\" port protocol=\"${PROTO}\" port=\"${PORT}\" accept"
+    if ! sudo firewall-cmd --policy=dns-egress --query-rich-rule="${RULE}" --permanent > /dev/null 2>&1; then
+        sudo firewall-cmd --permanent --policy=dns-egress --add-rich-rule="${RULE}" || die "Failed to add egress rule: ${RULE}"
+    fi
+}
+
 allow_egress_ipset() {
     FAMILY="$1"
     IPSET="$2"
@@ -187,41 +200,31 @@ fi
 # multicast address. Found live via the dns-06 logging catch-all.
 allow_egress ipv6 ff02::1:2/128 udp 547
 
-# DNS-to-DNS sync between the six nodes — a range, not the six individual
-# /32s, since .101-.106 is just what exists today.
-allow_egress ipv4 192.168.42.96/28 tcp 53
-allow_egress ipv4 192.168.42.96/28 udp 53
-allow_egress ipv6 2a02:8010:61d5:42::100/124 tcp 53
-allow_egress ipv6 2a02:8010:61d5:42::100/124 udp 53
+# Outbound DNS (53/udp+tcp) to ANY destination — a deliberate, documented
+# concession: this server does iterative recursive resolution (root ->
+# TLD -> authoritative), so its legitimate port-53 destinations are the
+# entire internet's DNS infrastructure and are inherently not enumerable.
+# Live validation on dns-06 proved per-address rules never converge (the
+# NextDNS steering layer alone rotated through three different
+# Cloudflare-network addresses within minutes). Covers DNS-to-DNS sync
+# between the six nodes, NextDNS plain-DNS/bootstrap on v4 and v6, and
+# all recursive resolution. Everything except DNS stays locked down.
+allow_egress_port ipv4 udp 53
+allow_egress_port ipv4 tcp 53
+allow_egress_port ipv6 udp 53
+allow_egress_port ipv6 tcp 53
 
-# NextDNS (be6f94), the sole forwarder — DoH/443, plus the plain-UDP/53
-# bootstrap lookup of dns.nextdns.io's own hostname.
+# NextDNS (be6f94), the sole forwarder — DoH/443.
 allow_egress ipv4 45.90.28.0/24 tcp 443
 allow_egress ipv4 45.90.30.0/24 tcp 443
-allow_egress ipv4 45.90.28.0/24 udp 53
-allow_egress ipv4 45.90.30.0/24 udp 53
 
-# NextDNS over IPv6. dns.nextdns.io is a CNAME to steering.nextdns.io,
-# whose AAAA answers are the Misaka and Anexia addresses below (the
-# Anexia one doubles as the block-page host but is required steering/DoH
-# infrastructure regardless). The two Cloudflare-hosted addresses are
-# where the steering layer routed this network's actual DNS traffic —
-# per-client and possibly not statically enumerable; if more keep
-# appearing in the dns-06 catch-all log, this needs the ipset/dynamic
-# treatment like github.com. All found live via the logging catch-all.
+# NextDNS DoH over IPv6. dns.nextdns.io is a CNAME to
+# steering.nextdns.io, whose AAAA answers are the Misaka and Anexia
+# addresses below (the Anexia one doubles as the block-page host but is
+# required steering/DoH infrastructure regardless). Found live via the
+# dns-06 logging catch-all.
 allow_egress ipv6 2a0f:3b03:100:2:5054:ff:fe90:4a77/128 tcp 443
 allow_egress ipv6 2a00:11c0:8:4::9/128 tcp 443
-allow_egress ipv6 2803:f800:50::6ca2:c181/128 udp 53
-allow_egress ipv6 2a06:98c1:50::ac40:2181/128 udp 53
-
-# The official per-profile NextDNS IPv6 anycast pair (config ID be6f94
-# embedded in the address), from the NextDNS dashboard's own setup page.
-# Stable and documented, unlike the steering-routed addresses above.
-# Plain-DNS endpoints - port 53 only.
-allow_egress ipv6 2a07:a8c0::be:6f94/128 udp 53
-allow_egress ipv6 2a07:a8c0::be:6f94/128 tcp 53
-allow_egress ipv6 2a07:a8c1::be:6f94/128 udp 53
-allow_egress ipv6 2a07:a8c1::be:6f94/128 tcp 53
 
 # raw.githubusercontent.com blocklists and abp.markridgwell.com (a CNAME
 # to credfeto.github.io) — both land in GitHub Pages' Fastly range.

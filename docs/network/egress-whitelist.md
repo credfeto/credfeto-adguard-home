@@ -306,6 +306,26 @@ testing alone could never show:
    official per-profile IPv6 anycast pair — `2a07:a8c0::be:6f94` and
    `2a07:a8c1::be:6f94` (config ID embedded) — stable and documented;
    both allowed on 53/udp+tcp (plain-DNS endpoints, port 53 only).
+5. **Per-address port-53 rules can never converge — decided: allow
+   outbound 53/udp+tcp to ANY destination.** Continued observation
+   showed a third distinct Cloudflare-network address within minutes,
+   and the underlying reason is structural: this server does iterative
+   recursive resolution (root -> TLD -> authoritative), so its
+   legitimate port-53 destinations are the entire internet's DNS
+   infrastructure — inherently not enumerable. Deliberate, documented
+   concession: DNS to anywhere is this server's core function; every
+   other port stays locked down. All the superseded narrow port-53
+   rules (DNS-cluster range, NextDNS v4/v6 plain-DNS addresses, the
+   official anycast pair) were removed from `update` and cleaned off
+   dns-06 so the pilot matches the script's output exactly.
+6. **The dynamic ipsets pick up NAT64 automatically** — the refresh
+   script resolves via the host's own DNS64-synthesising resolver, so
+   `dns-egress-github-v6` gained `64:ff9b::141a:9cd7` on its own,
+   closing the NAT64-github gap (finding 3) without extra rules for
+   ipset-covered domains. A NAT64 gap could still exist for
+   static-CIDR-covered HTTPS destinations if anything reaches them
+   via synthesised addresses — watch the catch-all log for
+   `64:ff9b:` hits on port 443.
 
 Also fixed during this validation pass (in the `update` script itself):
 `cd "${BASEDIR}"` so docker compose works regardless of caller's cwd;
