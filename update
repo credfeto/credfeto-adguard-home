@@ -200,6 +200,22 @@ fi
 # multicast address. Found live via the dns-06 logging catch-all.
 allow_egress ipv6 ff02::1:2/128 udp 547
 
+# IGMP - link-local multicast group housekeeping (TTL=1, never leaves
+# the link), emitted by the docker bridge interfaces at startup. Found
+# live via the dns-06 logging catch-all during the reboot test.
+IGMP_RULE="rule family=\"ipv4\" protocol value=\"igmp\" accept"
+if ! sudo firewall-cmd --policy=dns-egress --query-rich-rule="${IGMP_RULE}" --permanent > /dev/null 2>&1; then
+    sudo firewall-cmd --permanent --policy=dns-egress --add-rich-rule="${IGMP_RULE}" || die "Failed to add egress rule: ${IGMP_RULE}"
+fi
+
+# download.technitium.com - Technitium's own update check and DNS-app
+# downloads (dnsServerEnableCheckForUpdate / dnsAppsEnableAutomaticUpdate,
+# via go.technitium.com's redirect). Single DigitalOcean-hosted host,
+# both families; if updates start failing and the catch-all shows a new
+# address, it has moved. IPv6 found live via the reboot test.
+allow_egress ipv4 206.189.140.177/32 tcp 443
+allow_egress ipv6 2400:6180:100:d0::b3c:c001/128 tcp 443
+
 # Outbound DNS (53/udp+tcp) to ANY destination — a deliberate, documented
 # concession: this server does iterative recursive resolution (root ->
 # TLD -> authoritative), so its legitimate port-53 destinations are the
