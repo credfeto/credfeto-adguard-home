@@ -88,6 +88,12 @@ ensure_ipset() {
 
 BASEDIR="$(dirname "$(readlink -f "$0")")"
 
+# docker compose (below) resolves docker-compose.yml relative to the
+# current working directory, not BASEDIR - without this, running the
+# script via an absolute/relative path from elsewhere fails with "no
+# configuration file provided".
+cd "${BASEDIR}" || die "Could not cd to ${BASEDIR}"
+
 ENV_FILE="${BASEDIR}/.env"
 if [ ! -f "${ENV_FILE}" ]; then
     die "No .env file found at ${ENV_FILE}. Create one with DNS_ADMIN_PASSWORD=<password>"
