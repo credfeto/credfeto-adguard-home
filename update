@@ -252,7 +252,9 @@ allow_egress ipv4 192.168.42.1/32 udp 123
 
 # Internal package/registry/docker-cache proxy — fronts pacman, aur,
 # dotnet, npm, api-nuget, docker-cache and docker-registry alike.
+# Both families - the IPv6 form was caught live by the dns-06 catch-all.
 allow_egress ipv4 192.168.150.250/32 tcp 443
+allow_egress ipv6 2a02:8010:61d5:150::250/128 tcp 443
 
 # Technitium's own "Query Logs (SQL Server)" app.
 allow_egress ipv4 192.168.90.254/32 tcp 1433
