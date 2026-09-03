@@ -281,6 +281,37 @@ allow_egress_ipset ipv6 dns-egress-github-v6 tcp 443
 allow_egress_ipset ipv4 dns-egress-chaotic-v4 tcp 443
 allow_egress_ipset ipv6 dns-egress-chaotic-v6 tcp 443
 
+# Catch-all, evaluated dead last (priority 32767): in observation mode
+# (DNS_EGRESS_ENFORCE=false) unmatched egress is logged and accepted so
+# gaps in the allow-list surface in the kernel log without breaking
+# anything; under enforcement it is logged and dropped, keeping the same
+# visibility for anything actually blocked. The catch-all's own action
+# is what really enforces - a rich rule's action overrides the policy
+# target for traffic it matches, so the DROP target alone would be
+# bypassed by a log+accept catch-all.
+ensure_catchall() {
+    WANTED="$1"
+    UNWANTED="$2"
+    if sudo firewall-cmd --policy=dns-egress --query-rich-rule="${UNWANTED}" --permanent > /dev/null 2>&1; then
+        sudo firewall-cmd --permanent --policy=dns-egress --remove-rich-rule="${UNWANTED}" || die "Failed to remove egress rule: ${UNWANTED}"
+    fi
+    if ! sudo firewall-cmd --policy=dns-egress --query-rich-rule="${WANTED}" --permanent > /dev/null 2>&1; then
+        sudo firewall-cmd --permanent --policy=dns-egress --add-rich-rule="${WANTED}" || die "Failed to add egress rule: ${WANTED}"
+    fi
+}
+
+OBSERVE4='rule priority="32767" family="ipv4" log prefix="dns-egress-unmatched: " level="info" accept'
+OBSERVE6='rule priority="32767" family="ipv6" log prefix="dns-egress-unmatched: " level="info" accept'
+ENFORCE4='rule priority="32767" family="ipv4" log prefix="dns-egress-dropped: " level="info" drop'
+ENFORCE6='rule priority="32767" family="ipv6" log prefix="dns-egress-dropped: " level="info" drop'
+if [ "${DNS_EGRESS_ENFORCE}" = "true" ]; then
+    ensure_catchall "${ENFORCE4}" "${OBSERVE4}"
+    ensure_catchall "${ENFORCE6}" "${OBSERVE6}"
+else
+    ensure_catchall "${OBSERVE4}" "${ENFORCE4}"
+    ensure_catchall "${OBSERVE6}" "${ENFORCE6}"
+fi
+
 sudo firewall-cmd --reload
 
 # Install and enable the dynamic-egress ipset refresh timer.
