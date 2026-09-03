@@ -6,10 +6,16 @@ Working notes for restricting outbound traffic from the `credfeto-dns` hosts
 `192.168.42.1`) to an explicit allow-list, deny-by-default.
 
 Status: **ENFORCED FLEET-WIDE (2026-09-03)** — all six nodes on policy
-target `DROP` with a log+drop catch-all (`dns-egress-dropped:` prefix in
-the kernel log), and enforcement is now the *default* in `./update`
+target `DROP`, and enforcement is now the *default* in `./update`
 (`DNS_EGRESS_ENFORCE` unset means enforce; set `false` in `.env` for
-observation mode when validating a new node). Rollout: dns-06 first
+observation mode when validating a new node). The catch-all is a single
+action-less log rule (`dns-egress-unmatched:` prefix in the kernel log,
+both modes) — logged packets fall through to the policy target, which is
+the sole enforcement knob; the `dns-egress-dropped:` prefix seen in this
+document's history belonged to a retired log+drop catch-all variant.
+For ad-hoc Technitium API access during investigations like this one,
+`scripts/get-session-token` logs in with the `.env` admin password and
+prints a session token. Rollout: dns-06 first
 (2026-09-02) after a clean observed hour; the rest followed 2026-09-03
 after their own clean combined observation hour, each verified resolving
 under `DROP` before the next was enforced. Prerequisites that made this

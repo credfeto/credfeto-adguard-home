@@ -58,6 +58,7 @@ Please ADD ALL Changes to the UNRELEASED SECTION and not a specific release
 - Removed stale hagezi block-list URLs from docker-compose - hagezi was deliberately disabled in the live config
 - install now runs update at the end so a fresh ./install produces a fully running system
 - Egress lockdown is now enforced by default - set DNS_EGRESS_ENFORCE=false for observation mode
+- Simplified egress firewall internals - single log-only catch-all with the policy target as the sole enforcement knob (kernel log prefix is now always dns-egress-unmatched:), shared rule helper, conditional reloads
 ### Deprecated
 ### Removed
 ### Deployment Changes

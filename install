@@ -54,6 +54,7 @@ sudo systemctl status "${SERVICE_NAME}.timer" --no-pager
 
 # A fresh install should produce a fully running system, not just the
 # sync timer - update does everything else: container, certs, inbound
-# firewall rules, the dns-egress policy (inert until DNS_EGRESS_ENFORCE
-# is set), the ipset refresh timer, and the initial zone import.
+# firewall rules, the dns-egress policy (enforcing by default; set
+# DNS_EGRESS_ENFORCE=false in .env for observation mode), the ipset
+# refresh timer, and the initial zone import.
 "${BASEDIR}/update"

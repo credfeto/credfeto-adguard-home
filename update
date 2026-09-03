@@ -32,14 +32,23 @@ block_port() {
     fi
 }
 
-# Deny-by-default outbound policy. Target reflects DNS_EGRESS_ENFORCE:
-# DROP once proven stable, ACCEPT (every rule present but inert) until
-# then. See docs/network/egress-whitelist.md for the destination list.
+env_value() {
+    grep -E "^[[:space:]]*$1[[:space:]]*=" "${ENV_FILE}" | tail -n 1 | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
+}
+
+# Deny-by-default outbound policy. The policy TARGET is the one
+# enforcement knob: DROP when DNS_EGRESS_ENFORCE is true, ACCEPT
+# (observation - every rule present but unmatched egress passes) when
+# false. See docs/network/egress-whitelist.md for the destination list.
+# EGRESS_CHANGED tracks whether any permanent egress config was touched,
+# so the final reload can be skipped on idempotent re-runs.
+EGRESS_CHANGED=false
 ensure_egress_policy() {
     if ! sudo firewall-cmd --permanent --info-policy=dns-egress > /dev/null 2>&1; then
         sudo firewall-cmd --permanent --new-policy=dns-egress || die "Failed to create dns-egress policy"
         sudo firewall-cmd --permanent --policy=dns-egress --add-ingress-zone=HOST || die "Failed to set dns-egress ingress zone"
         sudo firewall-cmd --permanent --policy=dns-egress --add-egress-zone=ANY || die "Failed to set dns-egress egress zone"
+        EGRESS_CHANGED=true
     fi
     TARGET="ACCEPT"
     if [ "${DNS_EGRESS_ENFORCE}" = "true" ]; then
@@ -48,52 +57,57 @@ ensure_egress_policy() {
     CURRENT_TARGET="$(sudo firewall-cmd --permanent --policy=dns-egress --get-target)"
     if [ "${CURRENT_TARGET}" != "${TARGET}" ]; then
         sudo firewall-cmd --permanent --policy=dns-egress --set-target="${TARGET}" || die "Failed to set dns-egress target"
+        EGRESS_CHANGED=true
+    fi
+}
+
+# Shared idempotent core: add a rich rule to the dns-egress policy if it
+# is not already present.
+ensure_egress_rule() {
+    RULE="$1"
+    if ! sudo firewall-cmd --policy=dns-egress --query-rich-rule="${RULE}" --permanent > /dev/null 2>&1; then
+        sudo firewall-cmd --permanent --policy=dns-egress --add-rich-rule="${RULE}" || die "Failed to add egress rule: ${RULE}"
+        EGRESS_CHANGED=true
+    fi
+}
+
+# Remove a rich rule from the dns-egress policy if present (used to
+# retire superseded rule shapes on already-deployed nodes).
+retire_egress_rule() {
+    RULE="$1"
+    if sudo firewall-cmd --policy=dns-egress --query-rich-rule="${RULE}" --permanent > /dev/null 2>&1; then
+        sudo firewall-cmd --permanent --policy=dns-egress --remove-rich-rule="${RULE}" || die "Failed to remove egress rule: ${RULE}"
+        EGRESS_CHANGED=true
     fi
 }
 
 allow_egress() {
-    FAMILY="$1"
-    DEST="$2"
-    PROTO="$3"
-    PORT="$4"
-    RULE="rule family=\"${FAMILY}\" destination address=\"${DEST}\" port protocol=\"${PROTO}\" port=\"${PORT}\" accept"
-    if ! sudo firewall-cmd --policy=dns-egress --query-rich-rule="${RULE}" --permanent > /dev/null 2>&1; then
-        sudo firewall-cmd --permanent --policy=dns-egress --add-rich-rule="${RULE}" || die "Failed to add egress rule: ${RULE}"
-    fi
+    ensure_egress_rule "rule family=\"$1\" destination address=\"$2\" port protocol=\"$3\" port=\"$4\" accept"
 }
 
 # Any-destination, port-scoped egress allowance - reserve for traffic
 # classes whose legitimate destinations are inherently not enumerable
 # (outbound DNS from a recursive resolver).
 allow_egress_port() {
-    FAMILY="$1"
-    PROTO="$2"
-    PORT="$3"
-    RULE="rule family=\"${FAMILY}\" port protocol=\"${PROTO}\" port=\"${PORT}\" accept"
-    if ! sudo firewall-cmd --policy=dns-egress --query-rich-rule="${RULE}" --permanent > /dev/null 2>&1; then
-        sudo firewall-cmd --permanent --policy=dns-egress --add-rich-rule="${RULE}" || die "Failed to add egress rule: ${RULE}"
-    fi
+    ensure_egress_rule "rule family=\"$1\" port protocol=\"$2\" port=\"$3\" accept"
 }
 
 allow_egress_ipset() {
-    FAMILY="$1"
-    IPSET="$2"
-    PROTO="$3"
-    PORT="$4"
-    RULE="rule family=\"${FAMILY}\" destination ipset=\"${IPSET}\" port protocol=\"${PROTO}\" port=\"${PORT}\" accept"
-    if ! sudo firewall-cmd --policy=dns-egress --query-rich-rule="${RULE}" --permanent > /dev/null 2>&1; then
-        sudo firewall-cmd --permanent --policy=dns-egress --add-rich-rule="${RULE}" || die "Failed to add egress rule: ${RULE}"
-    fi
+    ensure_egress_rule "rule family=\"$1\" destination ipset=\"$2\" port protocol=\"$3\" port=\"$4\" accept"
 }
 
 # Ipsets for the dynamic (CDN-fronted, no stable CIDR) destinations -
 # created empty here; scripts/refresh-egress-ipsets populates and
-# maintains their actual entries.
+# maintains their actual entries. EXISTING_IPSETS is fetched once by the
+# caller before the first ensure_ipset call.
+IPSET_CREATED=false
 ensure_ipset() {
     NAME="$1"
     FAMILY="$2"
-    if ! sudo firewall-cmd --permanent --get-ipsets | grep -qw "${NAME}"; then
+    if ! printf '%s' "${EXISTING_IPSETS}" | grep -qw "${NAME}"; then
         sudo firewall-cmd --permanent --new-ipset="${NAME}" --type=hash:ip --option=family="${FAMILY}" || die "Failed to create ipset ${NAME}"
+        IPSET_CREATED=true
+        EGRESS_CHANGED=true
     fi
 }
 
@@ -112,12 +126,12 @@ if [ ! -f "${ENV_FILE}" ]; then
     die "No .env file found at ${ENV_FILE}. Create one with DNS_ADMIN_PASSWORD=<password>"
 fi
 
-DNS_ADMIN_PASSWORD="$(grep -E '^[[:space:]]*DNS_ADMIN_PASSWORD[[:space:]]*=' "${ENV_FILE}" | tail -n 1 | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+DNS_ADMIN_PASSWORD="$(env_value DNS_ADMIN_PASSWORD)"
 if [ -z "${DNS_ADMIN_PASSWORD}" ]; then
     die "DNS_ADMIN_PASSWORD is not set or is empty in ${ENV_FILE}"
 fi
 
-DNS_EGRESS_ENFORCE="$(grep -E '^[[:space:]]*DNS_EGRESS_ENFORCE[[:space:]]*=' "${ENV_FILE}" | tail -n 1 | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+DNS_EGRESS_ENFORCE="$(env_value DNS_EGRESS_ENFORCE)"
 # Enforcement is the default - set DNS_EGRESS_ENFORCE=false in .env to
 # fall back to observation mode (rules present, unmatched egress logged
 # but accepted) when validating a new node or diagnosing a gap.
@@ -186,18 +200,15 @@ block_port udp 67
 block_port udp 68
 
 ## Outbound (egress) lockdown — see docs/network/egress-whitelist.md for
-## the destination list and rationale, and DNS_EGRESS_ENFORCE above for
-## why this stays inert (ACCEPT) until deliberately turned on.
+## the destination list and rationale. Enforcement (policy target DROP)
+## is the default; DNS_EGRESS_ENFORCE=false gives observation mode.
 ensure_egress_policy
 
 # All ICMPv6 — NDP (the IPv6 equivalent of ARP) is fundamental link
 # operation; dropping it breaks IPv6 networking entirely, and narrowly
 # filtering ICMPv6 subtypes is a known anti-pattern (breaks PMTU
 # discovery etc.). Found live via the dns-06 logging catch-all.
-ICMPV6_RULE="rule family=\"ipv6\" protocol value=\"ipv6-icmp\" accept"
-if ! sudo firewall-cmd --policy=dns-egress --query-rich-rule="${ICMPV6_RULE}" --permanent > /dev/null 2>&1; then
-    sudo firewall-cmd --permanent --policy=dns-egress --add-rich-rule="${ICMPV6_RULE}" || die "Failed to add egress rule: ${ICMPV6_RULE}"
-fi
+ensure_egress_rule 'rule family="ipv6" protocol value="ipv6-icmp" accept'
 
 # DHCPv6 client (address configuration) to the DHCP relay/server
 # multicast address. Found live via the dns-06 logging catch-all.
@@ -206,10 +217,7 @@ allow_egress ipv6 ff02::1:2/128 udp 547
 # IGMP - link-local multicast group housekeeping (TTL=1, never leaves
 # the link), emitted by the docker bridge interfaces at startup. Found
 # live via the dns-06 logging catch-all during the reboot test.
-IGMP_RULE="rule family=\"ipv4\" protocol value=\"igmp\" accept"
-if ! sudo firewall-cmd --policy=dns-egress --query-rich-rule="${IGMP_RULE}" --permanent > /dev/null 2>&1; then
-    sudo firewall-cmd --permanent --policy=dns-egress --add-rich-rule="${IGMP_RULE}" || die "Failed to add egress rule: ${IGMP_RULE}"
-fi
+ensure_egress_rule 'rule family="ipv4" protocol value="igmp" accept'
 
 # download.technitium.com - Technitium's own update check and DNS-app
 # downloads (dnsServerEnableCheckForUpdate / dnsAppsEnableAutomaticUpdate,
@@ -265,57 +273,46 @@ allow_egress ipv4 192.168.90.254/32 tcp 1433
 
 # Dynamic (CDN-fronted, no stable CIDR) destinations — ipsets kept fresh
 # by scripts/refresh-egress-ipsets, installed and run below. Names use
-# short hand-picked slugs (github, chaotic), not the literal domain, so
-# they can't exceed the kernel's 32-byte ipset name limit
-# (IPSET_MAXNAMELEN) — keep scripts/refresh-egress-ipsets's
-# DOMAIN_SLUGS in sync if a domain is ever added, removed or renamed.
-ensure_ipset dns-egress-github-v4 inet
-ensure_ipset dns-egress-github-v6 inet6
-ensure_ipset dns-egress-chaotic-v4 inet
-ensure_ipset dns-egress-chaotic-v6 inet6
+# short hand-picked slugs, not the literal domain, so they can't exceed
+# the kernel's 32-byte ipset name limit (IPSET_MAXNAMELEN) — keep this
+# slug list in sync with scripts/refresh-egress-ipsets's DOMAIN_SLUGS if
+# a domain is ever added, removed or renamed.
+EXISTING_IPSETS="$(sudo firewall-cmd --permanent --get-ipsets)"
+for SLUG in github chaotic; do
+    ensure_ipset "dns-egress-${SLUG}-v4" inet
+    ensure_ipset "dns-egress-${SLUG}-v6" inet6
+done
 
 # A newly created --permanent ipset isn't recognised as a valid
 # rich-rule destination target until firewalld reloads — without this,
 # --add-rich-rule fails with INVALID_IPSET even though the ipset exists.
-sudo firewall-cmd --reload
-
-allow_egress_ipset ipv4 dns-egress-github-v4 tcp 443
-allow_egress_ipset ipv6 dns-egress-github-v6 tcp 443
-allow_egress_ipset ipv4 dns-egress-chaotic-v4 tcp 443
-allow_egress_ipset ipv6 dns-egress-chaotic-v6 tcp 443
-
-# Catch-all, evaluated dead last (priority 32767): in observation mode
-# (DNS_EGRESS_ENFORCE=false) unmatched egress is logged and accepted so
-# gaps in the allow-list surface in the kernel log without breaking
-# anything; under enforcement it is logged and dropped, keeping the same
-# visibility for anything actually blocked. The catch-all's own action
-# is what really enforces - a rich rule's action overrides the policy
-# target for traffic it matches, so the DROP target alone would be
-# bypassed by a log+accept catch-all.
-ensure_catchall() {
-    WANTED="$1"
-    UNWANTED="$2"
-    if sudo firewall-cmd --policy=dns-egress --query-rich-rule="${UNWANTED}" --permanent > /dev/null 2>&1; then
-        sudo firewall-cmd --permanent --policy=dns-egress --remove-rich-rule="${UNWANTED}" || die "Failed to remove egress rule: ${UNWANTED}"
-    fi
-    if ! sudo firewall-cmd --policy=dns-egress --query-rich-rule="${WANTED}" --permanent > /dev/null 2>&1; then
-        sudo firewall-cmd --permanent --policy=dns-egress --add-rich-rule="${WANTED}" || die "Failed to add egress rule: ${WANTED}"
-    fi
-}
-
-OBSERVE4='rule priority="32767" family="ipv4" log prefix="dns-egress-unmatched: " level="info" accept'
-OBSERVE6='rule priority="32767" family="ipv6" log prefix="dns-egress-unmatched: " level="info" accept'
-ENFORCE4='rule priority="32767" family="ipv4" log prefix="dns-egress-dropped: " level="info" drop'
-ENFORCE6='rule priority="32767" family="ipv6" log prefix="dns-egress-dropped: " level="info" drop'
-if [ "${DNS_EGRESS_ENFORCE}" = "true" ]; then
-    ensure_catchall "${ENFORCE4}" "${OBSERVE4}"
-    ensure_catchall "${ENFORCE6}" "${OBSERVE6}"
-else
-    ensure_catchall "${OBSERVE4}" "${ENFORCE4}"
-    ensure_catchall "${OBSERVE6}" "${ENFORCE6}"
+if [ "${IPSET_CREATED}" = "true" ]; then
+    sudo firewall-cmd --reload
 fi
 
-sudo firewall-cmd --reload
+for SLUG in github chaotic; do
+    allow_egress_ipset ipv4 "dns-egress-${SLUG}-v4" tcp 443
+    allow_egress_ipset ipv6 "dns-egress-${SLUG}-v6" tcp 443
+done
+
+# Catch-all, evaluated dead last (priority 32767): logs any egress not
+# matched by an allow rule above, with NO action of its own, so the
+# packet falls through to the policy target - accepted in observation
+# mode, dropped under enforcement. The target set in ensure_egress_policy
+# is therefore the single enforcement knob; the same log rule serves
+# both modes. (Earlier revisions used log+accept / log+drop catch-all
+# variants whose action overrode the target - retire those on
+# already-deployed nodes.)
+retire_egress_rule 'rule priority="32767" family="ipv4" log prefix="dns-egress-unmatched: " level="info" accept'
+retire_egress_rule 'rule priority="32767" family="ipv6" log prefix="dns-egress-unmatched: " level="info" accept'
+retire_egress_rule 'rule priority="32767" family="ipv4" log prefix="dns-egress-dropped: " level="info" drop'
+retire_egress_rule 'rule priority="32767" family="ipv6" log prefix="dns-egress-dropped: " level="info" drop'
+ensure_egress_rule 'rule priority="32767" family="ipv4" log prefix="dns-egress-unmatched: " level="info"'
+ensure_egress_rule 'rule priority="32767" family="ipv6" log prefix="dns-egress-unmatched: " level="info"'
+
+if [ "${EGRESS_CHANGED}" = "true" ]; then
+    sudo firewall-cmd --reload
+fi
 
 # Install and enable the dynamic-egress ipset refresh timer.
 sudo install -m 755 "${BASEDIR}/scripts/refresh-egress-ipsets" /usr/local/bin/refresh-egress-ipsets
