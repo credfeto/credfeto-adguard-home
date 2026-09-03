@@ -118,7 +118,10 @@ if [ -z "${DNS_ADMIN_PASSWORD}" ]; then
 fi
 
 DNS_EGRESS_ENFORCE="$(grep -E '^[[:space:]]*DNS_EGRESS_ENFORCE[[:space:]]*=' "${ENV_FILE}" | tail -n 1 | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-DNS_EGRESS_ENFORCE="${DNS_EGRESS_ENFORCE:-false}"
+# Enforcement is the default - set DNS_EGRESS_ENFORCE=false in .env to
+# fall back to observation mode (rules present, unmatched egress logged
+# but accepted) when validating a new node or diagnosing a gap.
+DNS_EGRESS_ENFORCE="${DNS_EGRESS_ENFORCE:-true}"
 
 git -C "${BASEDIR}" pull
 

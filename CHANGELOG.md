@@ -57,6 +57,7 @@ Please ADD ALL Changes to the UNRELEASED SECTION and not a specific release
 - Renumbered dns-01 through dns-04 from 192.168.42.251-254 to 192.168.42.101-104, added dns-05 (192.168.42.105), and added AAAA records (2a02:8010:61d5:42::101-105) for all five in lan.db and dns.lan.db
 - Removed stale hagezi block-list URLs from docker-compose - hagezi was deliberately disabled in the live config
 - install now runs update at the end so a fresh ./install produces a fully running system
+- Egress lockdown is now enforced by default - set DNS_EGRESS_ENFORCE=false for observation mode
 ### Deprecated
 ### Removed
 ### Deployment Changes
