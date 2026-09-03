@@ -5,20 +5,20 @@ Working notes for restricting outbound traffic from the `credfeto-dns` hosts
 (`opnsense.lan`, `192.168.10.1` / gateway seen from the DNS VLAN as
 `192.168.42.1`) to an explicit allow-list, deny-by-default.
 
-Status: **ENFORCED on dns-06 (2026-09-02)** — `DNS_EGRESS_ENFORCE=true`,
-policy target `DROP`, catch-all converted to log+drop
-(`dns-egress-dropped:` prefix in the kernel log). Went live after a
-clean one-hour observation window covering a full hourly `ansible-pull`
-cycle, with all post-enforcement checks passing (DNS resolution, github,
-blocklist fetch, `pacman -Sy` via the internal proxy, NTP via the
-gateway) and zero drops logged. The other five nodes remain
-unenforced (`DNS_EGRESS_ENFORCE` unset/false) pending a soak period on
-dns-06. Prerequisites that made this possible: NTP repointed at the
-gateway (credfeto-setup-arch-vm#223), pacman `Server=`-only via the
-internal proxy (#224/PR #226), broad port-53 concession, dynamic ipsets
-with deterministic NAT64. The Fastly allowance for `abp.markridgwell.com`
-is a known accepted over-allowance until adblockplusrules#623 /
-credfeto-dns#38.
+Status: **ENFORCED FLEET-WIDE (2026-09-03)** — all six nodes on policy
+target `DROP` with a log+drop catch-all (`dns-egress-dropped:` prefix in
+the kernel log), and enforcement is now the *default* in `./update`
+(`DNS_EGRESS_ENFORCE` unset means enforce; set `false` in `.env` for
+observation mode when validating a new node). Rollout: dns-06 first
+(2026-09-02) after a clean observed hour; the rest followed 2026-09-03
+after their own clean combined observation hour, each verified resolving
+under `DROP` before the next was enforced. Prerequisites that made this
+possible: NTP via the gateway (credfeto-setup-arch-vm#223, deployed via
+networkd `NTP=`), pacman `Server=`-only through the internal proxy
+(#224/PR #226), the broad port-53 concession, and dynamic ipsets with
+deterministic NAT64 forms. The Fastly allowance for
+`abp.markridgwell.com` remains a known accepted over-allowance until
+adblockplusrules#623 / credfeto-dns#38.
 
 ## Hosts
 
