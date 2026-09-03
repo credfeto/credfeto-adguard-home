@@ -44,13 +44,13 @@ sync_ipset() {
 
     printf '%s\n' "${_current}" | while IFS= read -r _ip; do
         [ -n "${_ip}" ] || continue
-        printf '%s\n' "${_wanted}" | grep -qx "${_ip}" \
+        printf '%s\n' "${_wanted}" | grep -Fqx "${_ip}" \
             || firewall-cmd --permanent --ipset="${_set}" --remove-entry="${_ip}" > /dev/null
     done
 
     printf '%s\n' "${_wanted}" | while IFS= read -r _ip; do
         [ -n "${_ip}" ] || continue
-        printf '%s\n' "${_current}" | grep -qx "${_ip}" \
+        printf '%s\n' "${_current}" | grep -Fqx "${_ip}" \
             || firewall-cmd --permanent --ipset="${_set}" --add-entry="${_ip}" > /dev/null
     done
 }
@@ -62,7 +62,11 @@ for _pair in ${DOMAIN_SLUGS}; do
     # One lookup per domain - separate per-family lookups can return
     # divergent snapshots under CDN rotation, and the NAT64 forms are
     # derived from the v4 answers, so a split view causes spurious churn.
-    _ahosts="$(getent ahosts "${_domain}")"
+    # A transiently unresolvable domain is skipped rather than aborting -
+    # exiting mid-run after an earlier domain's permanent entries were
+    # already mutated would strand runtime state (the reload below would
+    # never run: later runs see permanent==wanted and skip it).
+    _ahosts="$(getent ahosts "${_domain}")" || continue
     _v4="$(printf '%s\n' "${_ahosts}" | awk '$1 !~ /:/ {print $1}' | sort -u)"
 
     # v6 wanted-set = native AAAA answers plus the NAT64 well-known-prefix

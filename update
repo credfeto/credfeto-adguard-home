@@ -6,6 +6,11 @@ die() {
     exit 1
 }
 
+# FIREWALL_CHANGED tracks whether any permanent firewall config
+# (inbound zone rules or the egress policy) was touched, so the final
+# reload can be skipped on idempotent re-runs.
+FIREWALL_CHANGED=false
+
 allow_port() {
     PROTO="$1"
     PORT="$2"
@@ -13,12 +18,14 @@ allow_port() {
         RULE="rule family=\"ipv4\" source address=\"${SUBNET}\" port protocol=\"${PROTO}\" port=\"${PORT}\" accept"
         if ! sudo firewall-cmd --query-rich-rule="${RULE}" --permanent > /dev/null 2>&1; then
             sudo firewall-cmd --permanent --add-rich-rule="${RULE}" || die "Failed to add firewall rule: ${RULE}"
+            FIREWALL_CHANGED=true
         fi
     done
     for SUBNET in "fc00::/7" "fe80::/10" "2a02:8010:61d5::/48"; do
         RULE="rule family=\"ipv6\" source address=\"${SUBNET}\" port protocol=\"${PROTO}\" port=\"${PORT}\" accept"
         if ! sudo firewall-cmd --query-rich-rule="${RULE}" --permanent > /dev/null 2>&1; then
             sudo firewall-cmd --permanent --add-rich-rule="${RULE}" || die "Failed to add firewall rule: ${RULE}"
+            FIREWALL_CHANGED=true
         fi
     done
 }
@@ -29,6 +36,7 @@ block_port() {
     RULE="rule port protocol=\"${PROTO}\" port=\"${PORT}\" reject"
     if ! sudo firewall-cmd --query-rich-rule="${RULE}" --permanent > /dev/null 2>&1; then
         sudo firewall-cmd --permanent --add-rich-rule="${RULE}" || die "Failed to add firewall rule: ${RULE}"
+        FIREWALL_CHANGED=true
     fi
 }
 
@@ -37,27 +45,25 @@ env_value() {
 }
 
 # Deny-by-default outbound policy. The policy TARGET is the one
-# enforcement knob: DROP when DNS_EGRESS_ENFORCE is true, ACCEPT
-# (observation - every rule present but unmatched egress passes) when
-# false. See docs/network/egress-whitelist.md for the destination list.
-# EGRESS_CHANGED tracks whether any permanent egress config was touched,
-# so the final reload can be skipped on idempotent re-runs.
-EGRESS_CHANGED=false
+# enforcement knob: DROP (enforce) unless DNS_EGRESS_ENFORCE is exactly
+# "false" (observation - every rule present but unmatched egress
+# passes). Fail closed: an unset value or a typo means enforce. See
+# docs/network/egress-whitelist.md for the destination list.
 ensure_egress_policy() {
     if ! sudo firewall-cmd --permanent --info-policy=dns-egress > /dev/null 2>&1; then
         sudo firewall-cmd --permanent --new-policy=dns-egress || die "Failed to create dns-egress policy"
         sudo firewall-cmd --permanent --policy=dns-egress --add-ingress-zone=HOST || die "Failed to set dns-egress ingress zone"
         sudo firewall-cmd --permanent --policy=dns-egress --add-egress-zone=ANY || die "Failed to set dns-egress egress zone"
-        EGRESS_CHANGED=true
+        FIREWALL_CHANGED=true
     fi
-    TARGET="ACCEPT"
-    if [ "${DNS_EGRESS_ENFORCE}" = "true" ]; then
-        TARGET="DROP"
+    TARGET="DROP"
+    if [ "${DNS_EGRESS_ENFORCE}" = "false" ]; then
+        TARGET="ACCEPT"
     fi
     CURRENT_TARGET="$(sudo firewall-cmd --permanent --policy=dns-egress --get-target)"
     if [ "${CURRENT_TARGET}" != "${TARGET}" ]; then
         sudo firewall-cmd --permanent --policy=dns-egress --set-target="${TARGET}" || die "Failed to set dns-egress target"
-        EGRESS_CHANGED=true
+        FIREWALL_CHANGED=true
     fi
 }
 
@@ -67,7 +73,7 @@ ensure_egress_rule() {
     RULE="$1"
     if ! sudo firewall-cmd --policy=dns-egress --query-rich-rule="${RULE}" --permanent > /dev/null 2>&1; then
         sudo firewall-cmd --permanent --policy=dns-egress --add-rich-rule="${RULE}" || die "Failed to add egress rule: ${RULE}"
-        EGRESS_CHANGED=true
+        FIREWALL_CHANGED=true
     fi
 }
 
@@ -77,7 +83,7 @@ retire_egress_rule() {
     RULE="$1"
     if sudo firewall-cmd --policy=dns-egress --query-rich-rule="${RULE}" --permanent > /dev/null 2>&1; then
         sudo firewall-cmd --permanent --policy=dns-egress --remove-rich-rule="${RULE}" || die "Failed to remove egress rule: ${RULE}"
-        EGRESS_CHANGED=true
+        FIREWALL_CHANGED=true
     fi
 }
 
@@ -107,7 +113,7 @@ ensure_ipset() {
     if ! printf '%s' "${EXISTING_IPSETS}" | grep -qw "${NAME}"; then
         sudo firewall-cmd --permanent --new-ipset="${NAME}" --type=hash:ip --option=family="${FAMILY}" || die "Failed to create ipset ${NAME}"
         IPSET_CREATED=true
-        EGRESS_CHANGED=true
+        FIREWALL_CHANGED=true
     fi
 }
 
@@ -310,7 +316,7 @@ retire_egress_rule 'rule priority="32767" family="ipv6" log prefix="dns-egress-d
 ensure_egress_rule 'rule priority="32767" family="ipv4" log prefix="dns-egress-unmatched: " level="info"'
 ensure_egress_rule 'rule priority="32767" family="ipv6" log prefix="dns-egress-unmatched: " level="info"'
 
-if [ "${EGRESS_CHANGED}" = "true" ]; then
+if [ "${FIREWALL_CHANGED}" = "true" ]; then
     sudo firewall-cmd --reload
 fi
 
