@@ -8,8 +8,20 @@ die() {
 
 # FIREWALL_CHANGED tracks whether any permanent firewall config
 # (inbound zone rules or the egress policy) was touched, so the final
-# reload can be skipped on idempotent re-runs.
+# reload can be skipped on idempotent re-runs. The reload runs from
+# traps so that a die() or an interrupt (Ctrl-C, dropped ssh) after
+# permanent config was mutated still activates it - otherwise runtime
+# strands behind permanent config and re-runs (finding everything
+# already present) would never reload.
 FIREWALL_CHANGED=false
+finish_firewall() {
+    if [ "${FIREWALL_CHANGED}" = "true" ]; then
+        sudo firewall-cmd --reload
+        FIREWALL_CHANGED=false
+    fi
+}
+trap 'finish_firewall; exit 130' INT HUP TERM
+trap 'finish_firewall' EXIT
 
 allow_port() {
     PROTO="$1"
@@ -316,9 +328,9 @@ retire_egress_rule 'rule priority="32767" family="ipv6" log prefix="dns-egress-d
 ensure_egress_rule 'rule priority="32767" family="ipv4" log prefix="dns-egress-unmatched: " level="info"'
 ensure_egress_rule 'rule priority="32767" family="ipv6" log prefix="dns-egress-unmatched: " level="info"'
 
-if [ "${FIREWALL_CHANGED}" = "true" ]; then
-    sudo firewall-cmd --reload
-fi
+# Activate any changes now (the traps only cover abnormal exits from
+# this point on - the flag is reset once reloaded).
+finish_firewall
 
 # Install and enable the dynamic-egress ipset refresh timer.
 sudo install -m 755 "${BASEDIR}/scripts/refresh-egress-ipsets" /usr/local/bin/refresh-egress-ipsets
