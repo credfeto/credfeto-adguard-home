@@ -8,9 +8,12 @@
 
 set -eu
 
+# Errors go to stderr - stdout is this script's token contract, and an
+# unchecked caller must never receive error text (or the raw login
+# response) where a token belongs.
 die() {
-    echo
-    echo "$@"
+    echo >&2
+    echo "$@" >&2
     exit 1
 }
 

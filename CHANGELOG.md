@@ -50,6 +50,7 @@ Please ADD ALL Changes to the UNRELEASED SECTION and not a specific release
 ### Fixed
 - Fixed typo in `zones/lan.db`: `docker-tegistry` renamed to `docker-registry` (`192.168.150.202`).
 - Corrected `monitoring.lan` IP in `zones/lan.db` from `192.168.150.135` to `192.168.150.134`.
+- Egress ipset refresh no longer flaps on NAT64 spelling differences, and aborted update/refresh runs can no longer strand firewall runtime state behind permanent config
 ### Changed
 - Removed the legacy repository `hosts` file workflow; zone files in `zones/` are now the source of truth.
 - Widened the allowed IPv6 firewall network from 2a02:8010:61d5::/64 to 2a02:8010:61d5::/48 to cover all subnets, not just subnet 0
