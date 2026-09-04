@@ -28,11 +28,13 @@ DOMAIN_SLUGS="github.com:github cdn-mirror.chaotic.cx:chaotic"
 
 CHANGED=false
 
-# Reload via an EXIT trap so it also fires when set -e aborts the run
-# after permanent entries were already mutated - otherwise runtime state
-# strands behind permanent config, and later runs (seeing permanent ==
-# wanted, CHANGED=false) would never catch it up.
-trap 'if [ "${CHANGED}" = "true" ]; then firewall-cmd --reload; fi' EXIT
+# Reload via traps so it also fires when set -e aborts the run, or a
+# signal (e.g. systemctl stop mid-run) kills it, after permanent entries
+# were already mutated - otherwise runtime state strands behind
+# permanent config, and later runs (seeing permanent == wanted,
+# CHANGED=false) would never catch it up.
+trap 'if [ "${CHANGED}" = "true" ]; then firewall-cmd --reload; CHANGED=false; fi' EXIT
+trap 'exit 130' INT HUP TERM
 
 # firewalld's own ipset entries are the source of truth for "current" -
 # this script never keeps state of its own between runs. No-op when the
@@ -81,10 +83,11 @@ for _pair in ${DOMAIN_SLUGS}; do
     # destinations via these synthesised addresses - but whether a lookup
     # returns the synthesised AAAA depends on resolver state at that
     # instant, so resolver-returned 64:ff9b: forms are DROPPED here and
-    # recomputed deterministically from the v4 answers instead. The
-    # computed form uses unpadded hex groups to match RFC 5952 output,
-    # so string-level dedup against resolver/firewalld renderings can't
-    # produce duplicate same-address entries that flap between runs.
+    # recomputed deterministically from the v4 answers instead. With this
+    # script as the sets' only writer and firewalld returning entries
+    # verbatim, the comparison is self-consistent by construction -
+    # duplicate same-address spellings can't flap between runs. Unpadded
+    # hex groups keep the common case aligned with RFC 5952 rendering.
     _v6="$( {
         printf '%s\n' "${_ahosts}" | awk '$1 ~ /:/ && tolower($1) !~ /^64:ff9b:/ {print $1}'
         printf '%s\n' "${_v4}" | awk -F. 'NF == 4 {printf "64:ff9b::%x:%x\n", $1 * 256 + $2, $3 * 256 + $4}'
