@@ -1,0 +1,53 @@
+#!/bin/sh
+
+# Logs into the Technitium API using DNS_ADMIN_PASSWORD from the repo's
+# .env and prints a session token on stdout.
+#
+# Usage: get-session-token [HOST]
+#   HOST defaults to 127.0.0.1
+#
+# Intended for localhost use (run it on the node, e.g. over ssh). The
+# TLS check is disabled (-k) for the admin UI's self-signed cert, so
+# pointing HOST at a remote machine sends the shared admin password over
+# an unauthenticated connection - accepted for the LAN-internal
+# single-admin threat model, but prefer running it on the target node.
+
+set -eu
+
+# Errors go to stderr - stdout is this script's token contract, and an
+# unchecked caller must never receive error text (or the raw login
+# response) where a token belongs.
+die() {
+    echo >&2
+    echo "$@" >&2
+    exit 1
+}
+
+HOST="${1:-127.0.0.1}"
+PORT="53443"
+
+SCRIPTDIR="$(dirname "$(readlink -f "$0")")"
+BASEDIR="$(dirname "${SCRIPTDIR}")"
+
+ENV_FILE="${BASEDIR}/.env"
+if [ ! -f "${ENV_FILE}" ]; then
+    die "No .env file found at ${ENV_FILE}. Create one with DNS_ADMIN_PASSWORD=<password>"
+fi
+
+DNS_ADMIN_PASSWORD="$(grep -E '^[[:space:]]*DNS_ADMIN_PASSWORD[[:space:]]*=' "${ENV_FILE}" | tail -n 1 | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+if [ -z "${DNS_ADMIN_PASSWORD}" ]; then
+    die "DNS_ADMIN_PASSWORD is not set or is empty in ${ENV_FILE}"
+fi
+
+# POST with the password fed via stdin (pass@-) so it never appears in
+# curl's argv (world-readable via /proc/<pid>/cmdline while running) or
+# in a GET query string the server might log.
+RESPONSE="$(printf '%s' "${DNS_ADMIN_PASSWORD}" | curl -sk "https://${HOST}:${PORT}/api/user/login" \
+    --data-urlencode "user=admin" \
+    --data-urlencode "pass@-")" \
+    || die "Login request to ${HOST}:${PORT} failed"
+
+TOKEN="$(printf '%s' "${RESPONSE}" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)"
+[ -n "${TOKEN}" ] || die "Login failed, no token in response: ${RESPONSE}"
+
+echo "${TOKEN}"

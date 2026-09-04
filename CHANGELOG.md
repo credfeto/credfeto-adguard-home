@@ -46,18 +46,26 @@ Please ADD ALL Changes to the UNRELEASED SECTION and not a specific release
 - Added `ap-stairs.lan` (`192.168.10.6`) to `zones/lan.db` - Zyxel-Stairs wireless mesh access point.
 - Added `ap-garden.lan` (`192.168.10.9`) to `zones/lan.db` - Zyxel-Garden wireless mesh access point.
 - Added `netgear-proxmox-cluster.network.lan` and `netgear-proxmox-cluster.lan` (`192.168.10.10`) to `zones/network.lan.db` and `zones/lan.db` - NETGEAR GS108Ev3 switch (serial 3UHD1B540039A), the main switch for the Proxmox cluster, on a new DHCP reservation.
+- DNS server outbound egress lockdown (firewalld dns-egress policy, inert by default via DNS_EGRESS_ENFORCE)
 ### Fixed
 - Fixed typo in `zones/lan.db`: `docker-tegistry` renamed to `docker-registry` (`192.168.150.202`).
 - Corrected `monitoring.lan` IP in `zones/lan.db` from `192.168.150.135` to `192.168.150.134`.
+- Egress ipset refresh no longer flaps on NAT64 spelling differences, and aborted update/refresh runs can no longer strand firewall runtime state behind permanent config
 ### Changed
 - Removed the legacy repository `hosts` file workflow; zone files in `zones/` are now the source of truth.
 - Widened the allowed IPv6 firewall network from 2a02:8010:61d5::/64 to 2a02:8010:61d5::/48 to cover all subnets, not just subnet 0
 - Switched Technitium recursion ACL from AllowOnlyForPrivateNetworks to an explicit network ACL including 2a02:8010:61d5::/48, since public IPv6 addresses are never classified as private
 - Renumbered dns-01 through dns-04 from 192.168.42.251-254 to 192.168.42.101-104, added dns-05 (192.168.42.105), and added AAAA records (2a02:8010:61d5:42::101-105) for all five in lan.db and dns.lan.db
+- Removed stale hagezi block-list URLs from docker-compose - hagezi was deliberately disabled in the live config
+- install now runs update at the end so a fresh ./install produces a fully running system
+- Egress lockdown is now enforced by default - set DNS_EGRESS_ENFORCE=false for observation mode
+- Simplified egress firewall internals - single log-only catch-all with the policy target as the sole enforcement knob (kernel log prefix is now always dns-egress-unmatched:), shared rule helper, conditional reloads
 ### Deprecated
 ### Removed
 ### Deployment Changes
+
 <!--
 Releases that have at least been deployed to staging, BUT NOT necessarily released to live.  Changes should be moved from [Unreleased] into here as they are merged into the appropriate release branch
 -->
+
 ## [0.0.0] - Project created
